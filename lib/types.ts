@@ -4,6 +4,7 @@ export const CATEGORIES = [
   "Household",
   "Dressing",
   "Beauty",
+  "Skincare",
   "Transport",
   "Culture",
   "Therapy",

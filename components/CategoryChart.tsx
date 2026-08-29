@@ -61,15 +61,15 @@ export default function CategoryChart({ data }: Props) {
           />
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
-          <div className="h-56 sm:h-60">
+        <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-8">
+          <div className="relative h-52 w-52 shrink-0 sm:h-56 sm:w-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={chartData}
                   dataKey="amount"
                   nameKey="category"
-                  innerRadius="58%"
+                  innerRadius="62%"
                   outerRadius="88%"
                   paddingAngle={2}
                   stroke="none"
@@ -81,9 +81,17 @@ export default function CategoryChart({ data }: Props) {
                 <Tooltip content={<ChartTooltip />} />
               </PieChart>
             </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+                Total
+              </span>
+              <span className="mt-0.5 text-xl font-semibold text-text-primary">
+                {formatCurrency(total)}
+              </span>
+            </div>
           </div>
 
-          <ul className="space-y-1">
+          <ul className="w-full space-y-1 sm:w-auto sm:min-w-[240px]">
             {chartData
               .slice()
               .sort((a, b) => b.amount - a.amount)

@@ -20,8 +20,8 @@ create table if not exists expenses (
   expense_name text not null,
   category text not null check (
     category in (
-      'Food', 'Groceries', 'Household', 'Dressing', 'Beauty', 'Transport',
-      'Culture', 'Therapy', 'Gift', 'Miscellaneous', 'Electronics'
+      'Food', 'Groceries', 'Household', 'Dressing', 'Beauty', 'Skincare',
+      'Transport', 'Culture', 'Therapy', 'Gift', 'Miscellaneous', 'Electronics'
     )
   ),
   total_amount numeric(12, 2) not null check (total_amount >= 0),

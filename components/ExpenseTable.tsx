@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownUp, Check, Pencil, Trash2 } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { Expense, SettlementStatus } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
@@ -25,6 +25,41 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "category", label: "Category" },
   { key: "expense_name", label: "Name" },
 ];
+
+function SettlementBadge({
+  expense,
+  settled,
+  canToggle,
+  onToggle,
+}: {
+  expense: Expense;
+  settled: boolean;
+  canToggle: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!canToggle}
+      onClick={() => canToggle && onToggle()}
+      title={canToggle ? `Mark as ${settled ? "not settled" : "settled"}` : undefined}
+      className={clsx(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors duration-150",
+        settled ? "bg-success-bg text-success" : "bg-warning-bg text-warning",
+        canToggle ? "cursor-pointer hover:brightness-95" : "cursor-default"
+      )}
+    >
+      {settled ? (
+        <>
+          <Check className="h-3 w-3" aria-hidden />
+          Settled
+        </>
+      ) : (
+        <>+ {formatCurrency(expense.others_amount)} to get</>
+      )}
+    </button>
+  );
+}
 
 export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onSettlementChange }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("expense_date");
@@ -65,10 +100,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="mr-1 flex items-center gap-1 text-text-tertiary">
-          <ArrowDownUp className="h-3 w-3" aria-hidden />
-          Sort
-        </span>
+        <span className="mr-1 text-text-tertiary">Sort by:</span>
         {SORT_OPTIONS.map((opt) => {
           const active = sortKey === opt.key;
           return (
@@ -93,12 +125,13 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
         {sorted.map((expense) => {
           const hasOthers = expense.others_amount > 0;
           const settled = expense.settlement_status === "settled";
-          const canToggleSettlement = hasOthers && !readOnly && onSettlementChange;
+          const canToggleSettlement = Boolean(hasOthers && !readOnly && onSettlementChange);
+          const toggle = () => onSettlementChange?.(expense, settled ? "not_settled" : "settled");
 
           return (
             <li
               key={expense.id}
-              className="group flex items-center gap-3 px-3.5 py-3 transition-colors duration-150 hover:bg-surface-hover sm:px-4"
+              className="group flex items-center gap-3 px-3.5 py-3.5 transition-colors duration-150 hover:bg-surface-hover sm:gap-5 sm:px-5 sm:py-4"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint">
                 <CategoryIcon category={expense.category} className="h-4 w-4 text-primary" />
@@ -113,7 +146,8 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
                 </p>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-1">
+              {/* Compact stacked summary — mobile only */}
+              <div className="flex shrink-0 flex-col items-end gap-1 sm:hidden">
                 <span className="text-sm font-semibold text-text-primary">
                   {formatCurrency(expense.total_amount)}
                 </span>
@@ -125,39 +159,53 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
                   <span className="text-xs text-text-tertiary">Fully yours</span>
                 )}
               </div>
-
               {hasOthers && (
-                <button
-                  type="button"
-                  disabled={!canToggleSettlement}
-                  onClick={() =>
-                    canToggleSettlement &&
-                    onSettlementChange!(expense, settled ? "not_settled" : "settled")
-                  }
-                  title={
-                    canToggleSettlement
-                      ? `Mark as ${settled ? "not settled" : "settled"}`
-                      : undefined
-                  }
-                  className={clsx(
-                    "flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors duration-150",
-                    settled
-                      ? "bg-success-bg text-success"
-                      : "bg-warning-bg text-warning",
-                    canToggleSettlement && "cursor-pointer hover:brightness-95",
-                    !canToggleSettlement && "cursor-default"
-                  )}
-                >
-                  {settled ? (
-                    <>
-                      <Check className="h-3 w-3" aria-hidden />
-                      Settled
-                    </>
-                  ) : (
-                    <>+ {formatCurrency(expense.others_amount)} to get</>
-                  )}
-                </button>
+                <div className="sm:hidden">
+                  <SettlementBadge
+                    expense={expense}
+                    settled={settled}
+                    canToggle={canToggleSettlement}
+                    onToggle={toggle}
+                  />
+                </div>
               )}
+
+              {/* Relaxed columns — sm and up */}
+              <div className="hidden shrink-0 items-center gap-6 sm:flex lg:gap-10">
+                <div className="w-20 text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+                    Total
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                    {formatCurrency(expense.total_amount)}
+                  </p>
+                </div>
+                <div className="w-20 text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+                    Your Share
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                    {formatCurrency(expense.my_spending)}
+                  </p>
+                </div>
+                <div className="w-28">
+                  <p className="text-right text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+                    Settlement
+                  </p>
+                  <div className="mt-1 flex justify-end">
+                    {hasOthers ? (
+                      <SettlementBadge
+                        expense={expense}
+                        settled={settled}
+                        canToggle={canToggleSettlement}
+                        onToggle={toggle}
+                      />
+                    ) : (
+                      <span className="text-sm text-text-tertiary">—</span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {!readOnly && (
                 <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
