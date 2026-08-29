@@ -49,7 +49,23 @@ async function insertCycle(
     .select("*")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // Two requests can race to bootstrap/chain the same cycle at once (e.g.
+    // opening the app on two devices at the same moment, or React Strict
+    // Mode double-firing an effect in development). Postgres rejects the
+    // second insert with a unique-constraint violation on start_date — in
+    // that case the cycle already exists, so just fetch and return it.
+    if ((error as { code?: string }).code === "23505") {
+      const { data: existing, error: fetchError } = await supabase
+        .from("billing_cycles")
+        .select("*")
+        .eq("start_date", start_date)
+        .single();
+      if (fetchError) throw fetchError;
+      return existing as BillingCycle;
+    }
+    throw error;
+  }
   return data as BillingCycle;
 }
 

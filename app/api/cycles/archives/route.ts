@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { computeSummary, getExpensesForCycle } from "@/lib/cycle-service";
 import { ArchiveListItem, BillingCycle } from "@/lib/types";
+import { toErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,6 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }

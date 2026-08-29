@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { getOrCreateCurrentCycle, getCycleWithExpenses } from "@/lib/cycle-service";
+import { toErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,6 @@ export async function GET() {
     const data = await getCycleWithExpenses(supabase, cycle.id);
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }

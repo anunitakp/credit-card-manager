@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { getCycleById } from "@/lib/cycle-service";
 import { parseExpenseInput, ValidationError } from "@/lib/validation";
+import { toErrorMessage } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +41,6 @@ export async function POST(req: Request) {
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }
