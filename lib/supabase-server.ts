@@ -26,6 +26,20 @@ export function getSupabaseServerClient(): SupabaseClient {
 
   client = createClient(url, serviceRoleKey, {
     auth: { persistSession: false },
+    global: {
+      /**
+       * Next.js patches the global `fetch` and caches GET responses in its
+       * server-side Data Cache. supabase-js performs its SELECTs through
+       * `fetch`, so without opting out, reads get served from that cache and
+       * go stale indefinitely in production — writes still reach the database,
+       * but the UI keeps rendering an old snapshot. (It does not show up in
+       * local dev, which has no persistent Data Cache.)
+       *
+       * `no-store` keeps every Supabase request out of that cache so reads
+       * always hit the database.
+       */
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
   return client;
 }
