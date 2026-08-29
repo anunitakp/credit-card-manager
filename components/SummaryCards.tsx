@@ -1,3 +1,5 @@
+import { Wallet, CreditCard, ArrowDownLeft, Clock, type LucideIcon } from "lucide-react";
+import clsx from "clsx";
 import { CycleSummary } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 
@@ -5,51 +7,78 @@ interface CardDef {
   label: string;
   value: number;
   hint: string;
-  accent: string;
+  icon: LucideIcon;
+  accent: "neutral" | "primary" | "success" | "warning";
 }
+
+const ACCENT_CLASSES: Record<CardDef["accent"], { icon: string; iconBg: string; value: string }> = {
+  neutral: { icon: "text-text-secondary", iconBg: "bg-border/60", value: "text-text-primary" },
+  primary: { icon: "text-primary", iconBg: "bg-primary-tint", value: "text-primary" },
+  success: { icon: "text-success", iconBg: "bg-success-bg", value: "text-text-primary" },
+  warning: { icon: "text-warning", iconBg: "bg-warning-bg", value: "text-text-primary" },
+};
 
 export default function SummaryCards({ summary }: { summary: CycleSummary }) {
   const cards: CardDef[] = [
     {
       label: "Total Spending",
       value: summary.totalSpending,
-      hint: "All expenses, full amount",
-      accent: "text-slate-900",
+      hint: "All expenses",
+      icon: Wallet,
+      accent: "neutral",
     },
     {
       label: "My Spending",
       value: summary.mySpending,
-      hint: "What you actually owe",
-      accent: "text-brand-700",
+      hint: "Your share",
+      icon: CreditCard,
+      accent: "primary",
     },
     {
-      label: "Amount to Get",
+      label: "To Get",
       value: summary.amountToGet,
-      hint: "Owed by others, total",
-      accent: "text-emerald-700",
+      hint: "Owed by others",
+      icon: ArrowDownLeft,
+      accent: "success",
     },
     {
-      label: "Amount Yet to Get",
+      label: "Yet to Get",
       value: summary.amountYetToGet,
-      hint: "Still not settled",
-      accent: "text-amber-700",
+      hint: "Outstanding",
+      icon: Clock,
+      accent: "warning",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className="rounded-xl border border-slate-200 bg-white p-4 shadow-card"
-        >
-          <p className="text-sm font-medium text-slate-500">{card.label}</p>
-          <p className={`mt-1 text-2xl font-semibold ${card.accent}`}>
-            {formatCurrency(card.value)}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">{card.hint}</p>
-        </div>
-      ))}
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {cards.map((card) => {
+        const accent = ACCENT_CLASSES[card.accent];
+        return (
+          <div
+            key={card.label}
+            className="group rounded-xl border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                {card.label}
+              </p>
+              <span
+                className={clsx(
+                  "flex h-7 w-7 items-center justify-center rounded-full",
+                  accent.iconBg
+                )}
+              >
+                <card.icon className={clsx("h-3.5 w-3.5", accent.icon)} aria-hidden />
+              </span>
+            </div>
+            <p className={clsx("mt-2 text-[26px] font-semibold leading-tight", accent.value)}>
+              {formatCurrency(card.value)}
+            </p>
+            <p className="mt-1 text-xs text-text-tertiary">{card.hint}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }

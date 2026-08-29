@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, Lock } from "lucide-react";
 import { CycleWithExpenses } from "@/lib/types";
 import { fetchCycle } from "@/lib/api-client";
-import { formatCycleLabel } from "@/lib/billing-cycle";
+import { formatCycleLabelShort } from "@/lib/billing-cycle";
 import SummaryCards from "@/components/SummaryCards";
 import CategoryChart from "@/components/CategoryChart";
 import ExpenseTable from "@/components/ExpenseTable";
+import { DashboardSkeleton } from "@/components/Skeleton";
 
 export default function ArchiveDetailPage() {
   const params = useParams<{ id: string }>();
@@ -24,27 +26,32 @@ export default function ArchiveDetailPage() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
+      <div className="rounded-xl border border-danger/25 bg-danger-bg p-6 text-center text-danger">
         {error}
       </div>
     );
   }
 
   if (!data) {
-    return <div className="py-20 text-center text-slate-400">Loading archive…</div>;
+    return <DashboardSkeleton />;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/archives" className="text-sm text-brand-600 hover:underline">
-          ← Back to Archives
+        <Link
+          href="/archives"
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Back to Archives
         </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-            {formatCycleLabel(data.cycle)}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
+            {formatCycleLabelShort(data.cycle)}
           </h1>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-border/50 px-2.5 py-1 text-xs font-medium text-text-tertiary">
+            <Lock className="h-3 w-3" aria-hidden />
             Archived · Read-only
           </span>
         </div>
@@ -54,7 +61,7 @@ export default function ArchiveDetailPage() {
       <CategoryChart data={data.summary.categoryBreakdown} />
 
       <div>
-        <p className="mb-2 text-sm font-medium text-slate-500">Expenses</p>
+        <h2 className="mb-2 text-base font-semibold text-text-primary">Expenses</h2>
         <ExpenseTable expenses={data.expenses} readOnly />
       </div>
     </div>

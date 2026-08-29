@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Calendar, Lock, Plus } from "lucide-react";
 import { CycleWithExpenses, Expense, ExpenseInput, SettlementStatus } from "@/lib/types";
-import { formatCycleLabel } from "@/lib/billing-cycle";
+import { formatCycleLabelShort, formatDateLabel, isCycleClosable } from "@/lib/billing-cycle";
+import { formatCurrency } from "@/lib/format";
 import {
   closeCurrentCycle,
   createExpense,
@@ -16,8 +18,11 @@ import CategoryChart from "@/components/CategoryChart";
 import ExpenseTable from "@/components/ExpenseTable";
 import ExpenseForm from "@/components/ExpenseForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { DashboardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/ToastProvider";
 
 export default function DashboardPage() {
+  const { toast } = useToast();
   const [data, setData] = useState<CycleWithExpenses | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +57,16 @@ export default function DashboardPage() {
     if (!data) return;
     if (editing) {
       await updateExpense(editing.id, input);
+      toast({
+        title: "Expense updated",
+        description: `${input.expense_name} · ${formatCurrency(input.total_amount)}`,
+      });
     } else {
       await createExpense(data.cycle.id, input);
+      toast({
+        title: "Expense added",
+        description: `${formatCurrency(input.total_amount)} ${input.expense_name} added to this billing cycle.`,
+      });
     }
     setFormOpen(false);
     setEditing(null);
@@ -83,10 +96,12 @@ export default function DashboardPage() {
     setDeleteBusy(true);
     try {
       await deleteExpense(deleting.id);
+      toast({ title: "Expense deleted", description: deleting.expense_name });
       setDeleting(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete expense.");
+      toast({ title: "Couldn't delete expense", variant: "error" });
     } finally {
       setDeleteBusy(false);
     }
@@ -98,25 +113,27 @@ export default function DashboardPage() {
       const result = await closeCurrentCycle();
       setData(result);
       setCloseOpen(false);
+      toast({ title: "Billing cycle closed", description: "Moved to Archives." });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to close billing cycle.");
+      toast({ title: "Couldn't close billing cycle", variant: "error" });
     } finally {
       setCloseBusy(false);
     }
   }
 
   if (loading && !data) {
-    return <div className="py-20 text-center text-slate-400">Loading your billing cycle…</div>;
+    return <DashboardSkeleton />;
   }
 
   if (error && !data) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
+      <div className="rounded-xl border border-danger/25 bg-danger-bg p-6 text-center text-danger">
         {error}
         <div className="mt-3">
           <button
             onClick={load}
-            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium hover:bg-red-100"
+            className="rounded-lg border border-danger/30 px-3 py-1.5 text-sm font-medium hover:bg-danger/10"
           >
             Retry
           </button>
@@ -127,15 +144,18 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
+  const closable = isCycleClosable(data.cycle.end_date);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <Calendar className="h-3.5 w-3.5" aria-hidden />
             Current Billing Cycle
           </p>
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-            {formatCycleLabel(data.cycle)}
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
+            {formatCycleLabelShort(data.cycle)}
           </h1>
         </div>
         <div className="flex gap-2">
@@ -144,21 +164,38 @@ export default function DashboardPage() {
               setEditing(null);
               setFormOpen(true);
             }}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+            className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary-hover"
           >
-            + Add Expense
+            <Plus className="h-4 w-4" aria-hidden />
+            Add Expense
           </button>
           <button
-            onClick={() => setCloseOpen(true)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => closable && setCloseOpen(true)}
+            disabled={!closable}
+            title={
+              closable
+                ? undefined
+                : `You can close this cycle starting ${formatDateLabel(
+                    addOneDayIso(data.cycle.end_date)
+                  )}`
+            }
+            className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-text-primary transition-colors duration-150 hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
           >
-            Close Current Month
+            {!closable && <Lock className="h-3.5 w-3.5" aria-hidden />}
+            Close Month
           </button>
         </div>
       </div>
 
+      {!closable && (
+        <p className="-mt-3 text-xs text-text-tertiary">
+          This cycle runs through {formatDateLabel(data.cycle.end_date)}. You'll be able to close
+          it the day after.
+        </p>
+      )}
+
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">{error}</p>
       )}
 
       <SummaryCards summary={data.summary} />
@@ -166,7 +203,9 @@ export default function DashboardPage() {
       <CategoryChart data={data.summary.categoryBreakdown} />
 
       <div>
-        <p className="mb-2 text-sm font-medium text-slate-500">Expenses this cycle</p>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-text-primary">Recent Expenses</h2>
+        </div>
         <ExpenseTable
           expenses={data.expenses}
           onEdit={(expense) => {
@@ -210,4 +249,14 @@ export default function DashboardPage() {
       />
     </div>
   );
+}
+
+/** Adds one calendar day to a YYYY-MM-DD string, for the "closable from" hint. */
+function addOneDayIso(isoDate: string): string {
+  const [year, month1, day] = isoDate.split("-").map(Number);
+  const d = new Date(year, month1 - 1, day + 1);
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${dd}`;
 }

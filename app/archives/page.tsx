@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Archive, ChevronRight } from "lucide-react";
 import { ArchiveListItem } from "@/lib/types";
 import { fetchArchives } from "@/lib/api-client";
-import { formatCycleLabel } from "@/lib/billing-cycle";
+import { formatCycleLabelShort } from "@/lib/billing-cycle";
 import { formatCurrency } from "@/lib/format";
+import EmptyState from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function ArchivesPage() {
   const [items, setItems] = useState<ArchiveListItem[] | null>(null);
@@ -18,24 +21,32 @@ export default function ArchivesPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Archives</p>
-        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-          Closed Billing Cycles
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          Archives
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
+          Archived Billing Cycles
         </h1>
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">{error}</p>}
 
       {!items && !error && (
-        <div className="py-16 text-center text-slate-400">Loading archives…</div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
       )}
 
       {items && items.length === 0 && (
-        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-sm text-slate-400">
-          No closed billing cycles yet. Close your current month to start building your archive.
-        </div>
+        <EmptyState
+          icon={Archive}
+          title="No archives yet"
+          description="Close your current billing cycle and it'll show up here, read-only and preserved."
+        />
       )}
 
       {items && items.length > 0 && (
@@ -44,27 +55,45 @@ export default function ArchivesPage() {
             <li key={item.id}>
               <Link
                 href={`/archives/${item.id}`}
-                className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-card transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+                className="group flex items-center gap-4 rounded-xl border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
               >
-                <div>
-                  <p className="font-medium text-slate-900">{formatCycleLabel(item)}</p>
-                  <p className="text-xs text-slate-400">Closed</p>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-border/60">
+                  <Archive className="h-4 w-4 text-text-secondary" aria-hidden />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-text-primary">
+                    {formatCycleLabelShort(item)}
+                  </p>
+                  <span className="mt-1 inline-flex items-center rounded-full bg-border/50 px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
+                    Archived · Read-only
+                  </span>
                 </div>
-                <div className="flex gap-6 text-sm">
+
+                <div className="hidden shrink-0 gap-6 text-right sm:flex">
                   <div>
-                    <p className="text-xs text-slate-400">Total Spending</p>
-                    <p className="font-semibold text-slate-700">
+                    <p className="text-xs text-text-tertiary">Spent</p>
+                    <p className="text-sm font-semibold text-text-primary">
                       {formatCurrency(item.totalSpending)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">My Spending</p>
-                    <p className="font-semibold text-brand-700">
+                    <p className="text-xs text-text-tertiary">Your share</p>
+                    <p className="text-sm font-semibold text-primary">
                       {formatCurrency(item.mySpending)}
                     </p>
                   </div>
                 </div>
+
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-150 group-hover:translate-x-0.5"
+                  aria-hidden
+                />
               </Link>
+              <div className="mt-2 flex gap-6 text-xs text-text-secondary sm:hidden">
+                <span>{formatCurrency(item.totalSpending)} spent</span>
+                <span>{formatCurrency(item.mySpending)} your share</span>
+              </div>
             </li>
           ))}
         </ul>

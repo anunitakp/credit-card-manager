@@ -71,6 +71,22 @@ export function currentCycleWindow(): CycleWindow {
   return cycleWindowForDate(year, month1, day);
 }
 
+/** Today's local calendar date as a YYYY-MM-DD string. */
+export function todayIsoDateLocal(): string {
+  const { year, month1, day } = localToday();
+  return ymd(year, month1, day);
+}
+
+/**
+ * A cycle can only be manually closed once its statement date (the 15th)
+ * has actually passed — closing early would cut off expenses that still
+ * belong in this cycle. True once "today" is the 16th or later relative to
+ * the cycle's end_date.
+ */
+export function isCycleClosable(endDate: string): boolean {
+  return todayIsoDateLocal() > endDate;
+}
+
 /**
  * The cycle window that immediately follows the given cycle's end date.
  * Since a cycle's end_date is always the 15th of some month by
@@ -117,4 +133,42 @@ export function formatDateLabel(isoDate: string): string {
 /** Formats a cycle window as "August 16, 2026 → September 15, 2026". */
 export function formatCycleLabel(window: CycleWindow): string {
   return `${formatDateLabel(window.start_date)} → ${formatDateLabel(window.end_date)}`;
+}
+
+const MONTH_ABBR = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Formats a YYYY-MM-DD string as "D Mon YYYY", e.g. "29 Aug 2026". */
+export function formatDateShort(isoDate: string): string {
+  const [year, month1, day] = isoDate.split("-").map(Number);
+  return `${day} ${MONTH_ABBR[month1 - 1]} ${year}`;
+}
+
+/** Formats a YYYY-MM-DD string as "Mon D, YYYY", e.g. "Aug 29, 2026". */
+export function formatDateMedium(isoDate: string): string {
+  const [year, month1, day] = isoDate.split("-").map(Number);
+  return `${MONTH_ABBR[month1 - 1]} ${day}, ${year}`;
+}
+
+/** Formats a cycle window compactly, e.g. "Sep 16 → Oct 15, 2026". */
+export function formatCycleLabelShort(window: CycleWindow): string {
+  const [startYear, startMonth1, startDay] = window.start_date.split("-").map(Number);
+  const [endYear, endMonth1, endDay] = window.end_date.split("-").map(Number);
+  const start = `${MONTH_ABBR[startMonth1 - 1]} ${startDay}`;
+  const end = `${MONTH_ABBR[endMonth1 - 1]} ${endDay}`;
+  return startYear === endYear
+    ? `${start} → ${end}, ${endYear}`
+    : `${start}, ${startYear} → ${end}, ${endYear}`;
 }
