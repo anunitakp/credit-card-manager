@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { toErrorMessage } from "@/lib/errors";
+import { requireUser, unauthorizedResponse } from "@/lib/server-session";
 import { createNote, getAllNotes } from "@/lib/tracker-service";
 import { parseNoteInput, ValidationError } from "@/lib/tracker-validation";
 
@@ -8,19 +9,25 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
-    return NextResponse.json(await getAllNotes(supabase));
+    return NextResponse.json(await getAllNotes(supabase, userId));
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
     const input = parseNoteInput(await req.json());
-    return NextResponse.json(await createNote(supabase, input), { status: 201 });
+    return NextResponse.json(await createNote(supabase, userId, input), { status: 201 });
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }

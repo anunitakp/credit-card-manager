@@ -3,15 +3,18 @@ import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { computeSummary, getExpensesForCycle } from "@/lib/cycle-service";
 import { ArchiveListItem, BillingCycle } from "@/lib/types";
 import { toErrorMessage } from "@/lib/errors";
+import { requireUser, unauthorizedResponse } from "@/lib/server-session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
     const { data: cycles, error } = await supabase
       .from("billing_cycles")
       .select("*")
+      .eq("user_id", userId)
       .eq("status", "closed")
       .order("start_date", { ascending: false });
 
@@ -34,6 +37,8 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }

@@ -10,20 +10,28 @@ import {
   UpiExpenseInput,
 } from "./types";
 
+/**
+ * Every function here takes a `userId` and applies it to the query.
+ *
+ * That is not belt-and-braces on top of the middleware: middleware only
+ * proves *someone* is signed in, not that the row they asked for is theirs.
+ * Updates and deletes match on `id` AND `user_id` together, so passing
+ * another account's row id simply affects nothing rather than being an
+ * authorisation check that could be forgotten.
+ */
+
 /* ==================================================================
    Transactions — read-only union of credit-card and UPI expenses.
-
-   Everything the tracker displays comes from here. There is no copy of
-   a credit-card expense anywhere, so there is nothing that can drift
-   out of sync and no way to double-count one.
    ================================================================== */
 
 export async function getAllTransactions(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId: string
 ): Promise<Transaction[]> {
   const { data, error } = await supabase
     .from("all_transactions")
     .select("*")
+    .eq("user_id", userId)
     .order("expense_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -43,11 +51,12 @@ export async function getAllTransactions(
 
 export async function createUpiExpense(
   supabase: SupabaseClient,
+  userId: string,
   input: UpiExpenseInput
 ) {
   const { data, error } = await supabase
     .from("upi_expenses")
-    .insert(input)
+    .insert({ ...input, user_id: userId })
     .select("*")
     .single();
 
@@ -57,6 +66,7 @@ export async function createUpiExpense(
 
 export async function updateUpiExpense(
   supabase: SupabaseClient,
+  userId: string,
   id: string,
   input: UpiExpenseInput
 ) {
@@ -64,6 +74,7 @@ export async function updateUpiExpense(
     .from("upi_expenses")
     .update(input)
     .eq("id", id)
+    .eq("user_id", userId)
     .select("*")
     .maybeSingle();
 
@@ -71,22 +82,30 @@ export async function updateUpiExpense(
   return data;
 }
 
-export async function deleteUpiExpense(supabase: SupabaseClient, id: string) {
+export async function deleteUpiExpense(
+  supabase: SupabaseClient,
+  userId: string,
+  id: string
+) {
   const { error, count } = await supabase
     .from("upi_expenses")
     .delete({ count: "exact" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId);
 
   if (error) throw error;
   return (count ?? 0) > 0;
 }
 
 /* ==================================================================
-   Budgets — one standing set, applied to every month until changed.
+   Budgets — one standing set per account, applied to every month.
    ================================================================== */
 
-export async function getAllBudgets(supabase: SupabaseClient): Promise<Budget[]> {
-  const { data, error } = await supabase.from("budgets").select("*");
+export async function getAllBudgets(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Budget[]> {
+  const { data, error } = await supabase.from("budgets").select("*").eq("user_id", userId);
 
   if (error) throw error;
   return ((data as Budget[]) ?? []).map((b) => ({ ...b, amount: Number(b.amount) }));
@@ -103,12 +122,13 @@ export async function getAllBudgets(supabase: SupabaseClient): Promise<Budget[]>
  */
 export async function upsertBudget(
   supabase: SupabaseClient,
+  userId: string,
   input: BudgetInput
 ): Promise<Budget | null> {
   const { category, amount } = input;
 
   if (amount <= 0) {
-    const deletion = supabase.from("budgets").delete();
+    const deletion = supabase.from("budgets").delete().eq("user_id", userId);
     const { error } =
       category === null
         ? await deletion.is("category", null)
@@ -120,7 +140,7 @@ export async function upsertBudget(
   // The two unique indexes are partial — one for `category is null`, one for
   // everything else — and a PostgREST upsert cannot target a partial index,
   // so the update-then-insert is done explicitly.
-  const lookup = supabase.from("budgets").select("id");
+  const lookup = supabase.from("budgets").select("id").eq("user_id", userId);
   const { data: existing, error: findError } = await (category === null
     ? lookup.is("category", null)
     : lookup.eq("category", category)
@@ -132,6 +152,7 @@ export async function upsertBudget(
       .from("budgets")
       .update({ amount })
       .eq("id", existing.id)
+      .eq("user_id", userId)
       .select("*")
       .single();
     if (error) throw error;
@@ -140,7 +161,7 @@ export async function upsertBudget(
 
   const { data, error } = await supabase
     .from("budgets")
-    .insert({ category, amount })
+    .insert({ category, amount, user_id: userId })
     .select("*")
     .single();
   if (error) throw error;
@@ -151,10 +172,14 @@ export async function upsertBudget(
    Trips
    ================================================================== */
 
-export async function getAllTrips(supabase: SupabaseClient): Promise<Trip[]> {
+export async function getAllTrips(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Trip[]> {
   const { data, error } = await supabase
     .from("trips")
     .select("*")
+    .eq("user_id", userId)
     .order("trip_date", { ascending: false });
 
   if (error) throw error;
@@ -164,14 +189,23 @@ export async function getAllTrips(supabase: SupabaseClient): Promise<Trip[]> {
   }));
 }
 
-export async function createTrip(supabase: SupabaseClient, input: TripInput) {
-  const { data, error } = await supabase.from("trips").insert(input).select("*").single();
+export async function createTrip(
+  supabase: SupabaseClient,
+  userId: string,
+  input: TripInput
+) {
+  const { data, error } = await supabase
+    .from("trips")
+    .insert({ ...input, user_id: userId })
+    .select("*")
+    .single();
   if (error) throw error;
   return data;
 }
 
 export async function updateTrip(
   supabase: SupabaseClient,
+  userId: string,
   id: string,
   input: TripInput
 ) {
@@ -179,17 +213,19 @@ export async function updateTrip(
     .from("trips")
     .update(input)
     .eq("id", id)
+    .eq("user_id", userId)
     .select("*")
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function deleteTrip(supabase: SupabaseClient, id: string) {
+export async function deleteTrip(supabase: SupabaseClient, userId: string, id: string) {
   const { error, count } = await supabase
     .from("trips")
     .delete({ count: "exact" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId);
   if (error) throw error;
   return (count ?? 0) > 0;
 }
@@ -201,23 +237,36 @@ export async function deleteTrip(supabase: SupabaseClient, id: string) {
    order — no timestamp is ever shown in the UI.
    ================================================================== */
 
-export async function getAllNotes(supabase: SupabaseClient): Promise<Note[]> {
+export async function getAllNotes(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Note[]> {
   const { data, error } = await supabase
     .from("notes")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as Note[]) ?? [];
 }
 
-export async function createNote(supabase: SupabaseClient, input: NoteInput) {
-  const { data, error } = await supabase.from("notes").insert(input).select("*").single();
+export async function createNote(
+  supabase: SupabaseClient,
+  userId: string,
+  input: NoteInput
+) {
+  const { data, error } = await supabase
+    .from("notes")
+    .insert({ ...input, user_id: userId })
+    .select("*")
+    .single();
   if (error) throw error;
   return data;
 }
 
 export async function updateNote(
   supabase: SupabaseClient,
+  userId: string,
   id: string,
   input: NoteInput
 ) {
@@ -225,17 +274,19 @@ export async function updateNote(
     .from("notes")
     .update(input)
     .eq("id", id)
+    .eq("user_id", userId)
     .select("*")
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function deleteNote(supabase: SupabaseClient, id: string) {
+export async function deleteNote(supabase: SupabaseClient, userId: string, id: string) {
   const { error, count } = await supabase
     .from("notes")
     .delete({ count: "exact" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId);
   if (error) throw error;
   return (count ?? 0) > 0;
 }

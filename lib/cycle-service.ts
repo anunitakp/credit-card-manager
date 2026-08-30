@@ -15,10 +15,14 @@ import { BillingCycle, CycleSummary, CycleWithExpenses, Expense } from "./types"
  *     (not recomputed from today's date), so cycles always chain back-to-back
  *     with no gaps or overlaps in the archive history.
  */
-export async function getOrCreateCurrentCycle(supabase: SupabaseClient): Promise<BillingCycle> {
+export async function getOrCreateCurrentCycle(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<BillingCycle> {
   const { data: latest, error } = await supabase
     .from("billing_cycles")
     .select("*")
+    .eq("user_id", userId)
     .order("start_date", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -27,7 +31,7 @@ export async function getOrCreateCurrentCycle(supabase: SupabaseClient): Promise
 
   if (!latest) {
     const window = currentCycleWindow();
-    return insertCycle(supabase, window.start_date, window.end_date);
+    return insertCycle(supabase, userId, window.start_date, window.end_date);
   }
 
   if (latest.status === "open") {
@@ -35,17 +39,18 @@ export async function getOrCreateCurrentCycle(supabase: SupabaseClient): Promise
   }
 
   const window = nextCycleWindow(latest.end_date);
-  return insertCycle(supabase, window.start_date, window.end_date);
+  return insertCycle(supabase, userId, window.start_date, window.end_date);
 }
 
 async function insertCycle(
   supabase: SupabaseClient,
+  userId: string,
   start_date: string,
   end_date: string
 ): Promise<BillingCycle> {
   const { data, error } = await supabase
     .from("billing_cycles")
-    .insert({ start_date, end_date, status: "open" })
+    .insert({ start_date, end_date, status: "open", user_id: userId })
     .select("*")
     .single();
 
@@ -59,6 +64,7 @@ async function insertCycle(
       const { data: existing, error: fetchError } = await supabase
         .from("billing_cycles")
         .select("*")
+        .eq("user_id", userId)
         .eq("start_date", start_date)
         .single();
       if (fetchError) throw fetchError;
@@ -71,12 +77,14 @@ async function insertCycle(
 
 export async function closeCycle(
   supabase: SupabaseClient,
+  userId: string,
   cycleId: string
 ): Promise<BillingCycle> {
   const { data, error } = await supabase
     .from("billing_cycles")
     .update({ status: "closed", closed_at: new Date().toISOString() })
     .eq("id", cycleId)
+    .eq("user_id", userId)
     .eq("status", "open")
     .select("*")
     .single();
@@ -87,12 +95,14 @@ export async function closeCycle(
 
 export async function getCycleById(
   supabase: SupabaseClient,
+  userId: string,
   cycleId: string
 ): Promise<BillingCycle | null> {
   const { data, error } = await supabase
     .from("billing_cycles")
     .select("*")
     .eq("id", cycleId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
@@ -155,9 +165,10 @@ function round2(n: number): number {
 
 export async function getCycleWithExpenses(
   supabase: SupabaseClient,
+  userId: string,
   cycleId: string
 ): Promise<CycleWithExpenses | null> {
-  const cycle = await getCycleById(supabase, cycleId);
+  const cycle = await getCycleById(supabase, userId, cycleId);
   if (!cycle) return null;
   const expenses = await getExpensesForCycle(supabase, cycleId);
   return { cycle, expenses, summary: computeSummary(expenses) };

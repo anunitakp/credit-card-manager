@@ -54,6 +54,10 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Deliberately NOT reading the session here. Calling `cookies()` in the root
+  // layout opts every page out of static rendering, which turned each
+  // navigation into a server render just to print a username. The name comes
+  // from a readable cookie on the client instead.
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans">

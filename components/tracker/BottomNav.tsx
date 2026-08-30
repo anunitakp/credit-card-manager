@@ -8,6 +8,8 @@ import clsx from "clsx";
 import ThemeToggle from "@/components/ThemeToggle";
 import { BOTTOM_NAV, MORE_NAV, isActive } from "./nav-items";
 import { useAddExpense } from "./AddExpenseProvider";
+import { useSession } from "./SessionProvider";
+import SignOutButton from "./SignOutButton";
 
 /**
  * Mobile navigation: four destinations, a More sheet for the rest, and a
@@ -19,6 +21,7 @@ import { useAddExpense } from "./AddExpenseProvider";
 export default function BottomNav() {
   const pathname = usePathname();
   const { open } = useAddExpense();
+  const user = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Navigating away should never leave the sheet hanging open behind the
@@ -41,7 +44,7 @@ export default function BottomNav() {
           "bg-primary text-primary-foreground shadow-modal",
           "transition-transform duration-200 active:scale-90"
         )}
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 84px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
       >
         <Plus className="h-6 w-6" aria-hidden />
       </button>
@@ -93,14 +96,27 @@ export default function BottomNav() {
               <span className="text-sm font-medium text-text-primary">Appearance</span>
               <ThemeToggle compact />
             </div>
+
+            {user && (
+              <div className="mt-2 flex items-center justify-between rounded-2xl border border-glass bg-white/40 px-4 py-2.5 dark:bg-white/[0.05]">
+                <span className="min-w-0 truncate text-sm font-medium text-text-primary">
+                  {user.username}
+                </span>
+                <SignOutButton className="shrink-0" />
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* Floating rather than docked to the bottom edge: it is inset on all
+          four sides so the page washes past underneath it, which is the whole
+          point of frosting it. Sitting flush to the edge, the blur had nothing
+          to reveal along three of its sides. */}
       <nav
         aria-label="Primary"
-        className="glass-strong glass-lit fixed inset-x-0 bottom-0 z-40 flex border-x-0 border-b-0 px-1 pt-1 lg:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)" }}
+        className="glass-strong glass-lit fixed inset-x-3 z-40 flex rounded-3xl p-1.5 shadow-modal lg:hidden"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
         {BOTTOM_NAV.map((item) => {
           const active = isActive(item.href, pathname);

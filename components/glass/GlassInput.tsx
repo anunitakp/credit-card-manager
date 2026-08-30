@@ -3,10 +3,18 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
 
+/**
+ * No `backdrop-blur` here on purpose.
+ *
+ * Every field already sits on a frosted card, so blurring again re-samples an
+ * already-blurred backdrop for no visible gain — and each one is its own GPU
+ * compositing layer. The Budget page alone renders fourteen of these, which
+ * made scrolling it noticeably heavy on a phone.
+ */
 export const fieldShell =
   "w-full rounded-xl border border-glass bg-white/45 px-3.5 text-sm text-text-primary " +
   "placeholder:text-text-tertiary shadow-none outline-none transition-all duration-200 " +
-  "backdrop-blur-sm dark:bg-white/[0.05] " +
+  "dark:bg-white/[0.05] " +
   "hover:border-primary/30 focus:border-primary/60 focus:bg-white/70 " +
   "focus:ring-4 focus:ring-primary/10 dark:focus:bg-white/[0.09]";
 

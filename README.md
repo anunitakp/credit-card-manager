@@ -19,7 +19,8 @@ everywhere. Nothing to sync, nothing to double-enter, no way to duplicate.
 - **Recharts** — donut and bar charts
 - **Vercel** — hosting, one HTTPS URL for every device
 
-There is no login. The app is meant to be used by one person.
+Every account signs in with a username and password, and sees only its own
+data.
 
 ---
 
@@ -34,6 +35,8 @@ There is no login. The app is meant to be used by one person.
    - [`supabase/migration-01-expense-tracker.sql`](supabase/migration-01-expense-tracker.sql)
      — the tracker's tables and the `all_transactions` view. **Required.**
      Without it the app starts but every page reports a missing table.
+   - [`supabase/migration-02-multi-user.sql`](supabase/migration-02-multi-user.sql)
+     — accounts, and per-account ownership of every row. **Required.**
 3. Open **Project Settings → API** and copy the **Project URL** and the
    **`service_role` secret key** (not the `anon` key).
 
@@ -48,6 +51,11 @@ Create `.env.local`:
 ```
 SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Signs the session cookie. Any long random string; changing it signs
+# everyone out. Generate one with:
+#   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+AUTH_SECRET=your-long-random-string
 ```
 
 ```bash
@@ -56,12 +64,40 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
-### 3. Deploy
+### 3. Create your account
+
+Start the app and go to **/signup**. The **first account created adopts every
+row that predates accounts existing**, so if you already had expenses, budgets,
+trips or notes in the database, they become that account's data automatically —
+there is no migration step to run for them.
+
+Everyone after that starts empty and sees only their own data.
+
+### 4. Deploy
 
 Push to GitHub, import the repo at [vercel.com](https://vercel.com), add the
-same two environment variables, and deploy. Every later push redeploys.
+same environment variables, and deploy. Every later push redeploys.
 
 ---
+
+## Accounts
+
+Every page and every API route sits behind a sign-in. The gate is
+[`middleware.ts`](middleware.ts), so a route added later is protected by
+default — the failure mode is "locked out", not "wide open".
+
+- **Passwords** are stored only as scrypt hashes, in `salt:hash` form. No
+  plaintext password is written to the database, the repo, or a log.
+- **Sessions** are a signed cookie — `httpOnly`, `sameSite=lax`, thirty days,
+  `secure` in production. There is no session table, which is what lets the
+  Edge middleware verify a request without touching the database.
+- **Isolation** is enforced in the queries, not just the UI. Every read filters
+  on `user_id`, and every update and delete matches on `id` *and* `user_id`
+  together — so passing another account's row id affects nothing, rather than
+  relying on an ownership check somebody could forget to write.
+- **Credit-card expenses** carry no `user_id` of their own. They belong to a
+  billing cycle and the cycle carries the owner, so the two can never disagree
+  about who an expense belongs to.
 
 ## How the data fits together
 
@@ -112,7 +148,8 @@ dashboard's headline card.
 
 | Table | Holds |
 | --- | --- |
-| `billing_cycles` | One row per 16th → 15th credit-card cycle, `open` or `closed`. |
+| `users` | Accounts. Usernames unique case-insensitively; passwords are scrypt hashes. |
+| `billing_cycles` | One row per 16th → 15th credit-card cycle, `open` or `closed`. Carries the owner. |
 | `expenses` | Credit-card expenses, belonging to a cycle. `my_spending` is a generated column. |
 | `upi_expenses` | UPI expenses, entered in the tracker. |
 | `budgets` | One standing budget per category, applied to every month; `category is null` is the overall monthly budget. |
@@ -134,6 +171,7 @@ dashboard's headline card.
 | `/notes` | Notes. |
 | `/salary` | Placeholder; the route and layout exist so income tracking can be added later without restructuring. |
 | `/cards` | The Credit Card Manager: current cycle, settlement tracking, close-the-month. |
+| `/login`, `/signup` | Sign in and account creation. The only pages reachable signed out. |
 | `/cards/archives` | Closed cycles, read-only. |
 
 ## How the billing cycle works

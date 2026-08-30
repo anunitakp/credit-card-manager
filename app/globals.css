@@ -17,8 +17,8 @@
 
 :root {
   /* --- Page ------------------------------------------------------------ */
-  --bg: 238 243 248;          /* #EEF3F8 pale ice */
-  --bg-deep: 226 234 242;     /* #E2EAF2 */
+  --bg: 227 238 247;          /* #E3EEF7 pale ice */
+  --bg-deep: 206 222 237;     /* #CEDEED */
 
   /* --- Neutral surfaces (used by non-glass elements) -------------------- */
   --surface: 255 255 255;
@@ -29,8 +29,11 @@
 
   /* --- Type ------------------------------------------------------------- */
   --text-primary: 20 32 43;      /* #14202B charcoal blue */
-  --text-secondary: 91 107 122;  /* #5B6B7A */
-  --text-tertiary: 139 154 168;  /* #8B9AA8 */
+  /* Darkened a step from the original greys: the card surfaces are only
+     ~52% opaque now, so the wash behind lifts their effective background
+     and muted text needs the extra weight to stay comfortably readable. */
+  --text-secondary: 74 90 104;   /* #4A5A68 */
+  --text-tertiary: 116 132 146;  /* #748492 */
 
   /* --- Accent ----------------------------------------------------------- */
   --primary: 11 110 153;         /* #0B6E99 deep glacier blue */
@@ -46,26 +49,42 @@
   --danger: 178 51 51;           /* muted brick red */
   --danger-bg: 252 235 235;
 
+  /* --- The shell -------------------------------------------------------- */
+  /* The single large pane the whole app sits inside on desktop. It is the
+     most transparent surface in the system; every card sits on top of it and
+     must therefore be more opaque than it to separate. */
+  --shell-bg: rgb(255 255 255 / 0.30);
+  --shell-border: rgb(255 255 255 / 0.70);
+  --shell-blur: 36px;
+  --shell-shadow:
+    0 2px 6px rgb(16 34 48 / 0.04),
+    0 24px 70px -20px rgb(16 34 48 / 0.20);
+
   /* --- Glass ------------------------------------------------------------ */
-  --glass-bg: rgb(255 255 255 / 0.58);
-  --glass-bg-strong: rgb(255 255 255 / 0.76);
-  --glass-bg-subtle: rgb(255 255 255 / 0.38);
+  /* Kept well under fully opaque on purpose. Glass only reads as glass when
+     the wash behind it comes through; at 0.85 these were simply white cards. */
+  --glass-bg: rgb(255 255 255 / 0.52);
+  --glass-bg-strong: rgb(255 255 255 / 0.66);
+  --glass-bg-subtle: rgb(255 255 255 / 0.30);
   --glass-border: rgb(255 255 255 / 0.65);
-  --glass-border-soft: rgb(20 32 43 / 0.07);
+  --glass-border-soft: rgb(20 32 43 / 0.055);
   --glass-highlight: rgb(255 255 255 / 0.9);
-  --glass-blur: 22px;
-  --glass-shadow:
-    0 1px 2px rgb(16 34 48 / 0.04),
-    0 8px 24px -8px rgb(16 34 48 / 0.10);
-  --glass-shadow-hover:
-    0 1px 2px rgb(16 34 48 / 0.05),
-    0 16px 40px -12px rgb(16 34 48 / 0.16);
-  --glass-glow: 0 20px 60px -24px rgb(11 110 153 / 0.35);
+  --glass-blur: 26px;
+  /* Deliberately faint. Cards on the shell separate through opacity and a
+     hairline border, not through drop shadows. */
+  --glass-shadow: 0 1px 2px rgb(16 34 48 / 0.03), 0 6px 18px -10px rgb(16 34 48 / 0.10);
+  --glass-shadow-hover: 0 1px 2px rgb(16 34 48 / 0.04), 0 14px 32px -14px rgb(16 34 48 / 0.16);
+  --glass-glow: 0 20px 60px -24px rgb(11 110 153 / 0.30);
 
   /* --- Background blobs ------------------------------------------------- */
-  --blob-1: rgb(80 170 220 / 0.30);
-  --blob-2: rgb(175 220 240 / 0.55);
-  --blob-3: rgb(216 226 240 / 0.65);
+  /* Stronger than they need to be behind a full-bleed layout: the shell is
+     inset, so this wash is visible around it and is what the glass refracts. */
+  /* Three distinct hues, not three tints of one. The colour that shows
+     through a translucent card is what separates it from plain white. */
+  --blob-1: rgb(64 158 218 / 0.50);
+  --blob-2: rgb(134 205 238 / 0.68);
+  --blob-3: rgb(178 190 240 / 0.55);
+  --streak: rgb(255 255 255 / 0.55);
 
   --shadow-card: var(--glass-shadow);
   --shadow-card-hover: var(--glass-shadow-hover);
@@ -100,24 +119,28 @@
   --danger: 233 122 122;
   --danger-bg: 52 26 26;
 
-  --glass-bg: rgb(32 44 56 / 0.55);
-  --glass-bg-strong: rgb(36 50 62 / 0.72);
-  --glass-bg-subtle: rgb(28 39 49 / 0.38);
+  --shell-bg: rgb(22 31 40 / 0.40);
+  --shell-border: rgb(255 255 255 / 0.08);
+  --shell-blur: 36px;
+  --shell-shadow:
+    0 2px 6px rgb(0 0 0 / 0.35),
+    0 24px 70px -20px rgb(0 0 0 / 0.65);
+
+  --glass-bg: rgb(34 46 58 / 0.48);
+  --glass-bg-strong: rgb(41 55 69 / 0.62);
+  --glass-bg-subtle: rgb(29 40 51 / 0.32);
   --glass-border: rgb(255 255 255 / 0.09);
-  --glass-border-soft: rgb(255 255 255 / 0.06);
+  --glass-border-soft: rgb(255 255 255 / 0.07);
   --glass-highlight: rgb(255 255 255 / 0.12);
-  --glass-blur: 24px;
-  --glass-shadow:
-    0 1px 2px rgb(0 0 0 / 0.30),
-    0 12px 32px -12px rgb(0 0 0 / 0.55);
-  --glass-shadow-hover:
-    0 1px 2px rgb(0 0 0 / 0.35),
-    0 20px 48px -16px rgb(0 0 0 / 0.70);
+  --glass-blur: 26px;
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.24), 0 8px 22px -12px rgb(0 0 0 / 0.5);
+  --glass-shadow-hover: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 36px -16px rgb(0 0 0 / 0.65);
   --glass-glow: 0 20px 60px -24px rgb(95 208 245 / 0.28);
 
-  --blob-1: rgb(56 160 210 / 0.26);
-  --blob-2: rgb(30 100 140 / 0.38);
-  --blob-3: rgb(40 70 100 / 0.42);
+  --blob-1: rgb(56 160 210 / 0.40);
+  --blob-2: rgb(28 104 148 / 0.55);
+  --blob-3: rgb(62 72 128 / 0.45);
+  --streak: rgb(140 205 240 / 0.12);
 
   --shadow-card: var(--glass-shadow);
   --shadow-card-hover: var(--glass-shadow-hover);
@@ -186,7 +209,7 @@ body {
   background: var(--blob-2);
 }
 
-.app-atmosphere > span {
+.app-atmosphere > .blob {
   position: absolute;
   top: 34%;
   left: 46%;
@@ -197,6 +220,55 @@ body {
   border-radius: 50%;
   filter: blur(80px);
   background: var(--blob-3);
+}
+
+/* A soft diagonal band of light raking across the wash. It is what gives the
+   shell's blur something with direction to refract, rather than a flat field
+   of colour. */
+.app-atmosphere > .streak {
+  position: absolute;
+  top: -15%;
+  left: -25%;
+  width: 150%;
+  height: 70%;
+  transform: rotate(-14deg);
+  filter: blur(70px);
+  background: linear-gradient(
+    100deg,
+    transparent 18%,
+    var(--streak) 46%,
+    transparent 72%
+  );
+}
+
+/* --------------------------------------------------------------------------
+   The shell.
+
+   On desktop the entire app lives inside one large translucent pane that
+   floats on the atmosphere, with the wash visible around every edge. The
+   sidebar is not its own card — it is a transparent column inside this pane,
+   divided by a hairline. Scrolling happens inside the pane, so the shell
+   stays put and the content moves within it.
+
+   Below `lg` the pane is dropped entirely: on a phone the screen is too
+   narrow to give away margin, so the layout goes edge to edge.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .app-shell {
+    background-color: var(--shell-bg);
+    backdrop-filter: blur(var(--shell-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(150%);
+    border: 1px solid var(--shell-border);
+    border-radius: 30px;
+    box-shadow: var(--shell-shadow);
+    overflow: hidden;
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .app-shell {
+      background-color: rgb(var(--surface) / 0.9);
+    }
+  }
 }
 
 @layer components {
@@ -211,10 +283,18 @@ body {
   .glass-strong,
   .glass-subtle {
     position: relative;
-    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
     border: 1px solid var(--glass-border-soft);
     box-shadow: var(--glass-shadow);
+  }
+
+  /* Only the two card weights actually frost anything. Each backdrop-filter
+     is a separate GPU compositing layer that re-samples what is behind it on
+     every frame, so they are spent only where they change how the surface
+     reads. */
+  .glass,
+  .glass-strong {
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   }
 
   .glass {
@@ -225,6 +305,9 @@ body {
     background-color: var(--glass-bg-strong);
   }
 
+  /* Subtle surfaces — chips, toggles, list rows — always sit on top of a card
+     or the shell, both of which have already blurred the background. Blurring
+     an already-blurred backdrop costs a layer and changes almost nothing. */
   .glass-subtle {
     background-color: var(--glass-bg-subtle);
     box-shadow: none;
@@ -251,6 +334,7 @@ body {
   .glass-glow {
     box-shadow: var(--glass-shadow), var(--glass-glow);
   }
+
 
   /* Fallback for browsers without backdrop-filter: prefer a near-opaque
      surface over unreadable transparency. */

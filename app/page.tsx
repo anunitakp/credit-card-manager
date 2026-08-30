@@ -13,6 +13,7 @@ import CategoryBreakdown from "@/components/tracker/CategoryBreakdown";
 import CategoryDonut from "@/components/tracker/CategoryDonut";
 import TransactionRow from "@/components/tracker/TransactionRow";
 import { useAddExpense } from "@/components/tracker/AddExpenseProvider";
+import { useSession } from "@/components/tracker/SessionProvider";
 import { useTracker } from "@/components/tracker/TrackerProvider";
 import { budgetTone, splitBudgets, filterByMonth, summarise } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { transactions, budgets, loading, error } = useTracker();
   const { open } = useAddExpense();
+  const user = useSession();
 
   const monthKey = currentMonthKey();
 
@@ -72,7 +74,8 @@ export default function DashboardPage() {
       <header className="flex items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-[22px] font-semibold tracking-tight text-text-primary sm:text-[26px]">
-            {greeting()}, Anu <span aria-hidden>👋</span>
+            {greeting()}
+            {user ? `, ${user.username}` : ""} <span aria-hidden>👋</span>
           </h1>
           <p className="mt-1 text-sm text-text-secondary">{formatMonthKey(monthKey)}</p>
         </div>

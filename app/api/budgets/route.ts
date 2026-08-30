@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { toErrorMessage } from "@/lib/errors";
+import { requireUser, unauthorizedResponse } from "@/lib/server-session";
 import { getAllBudgets, upsertBudget } from "@/lib/tracker-service";
 import { parseBudgetInput, ValidationError } from "@/lib/tracker-validation";
 
@@ -8,9 +9,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
-    return NextResponse.json(await getAllBudgets(supabase));
+    return NextResponse.json(await getAllBudgets(supabase, userId));
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }
@@ -18,11 +22,14 @@ export async function GET() {
 /** Sets — or, with an amount of 0, clears — one budget for one month. */
 export async function PUT(req: Request) {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
     const input = parseBudgetInput(await req.json());
-    const budget = await upsertBudget(supabase, input);
+    const budget = await upsertBudget(supabase, userId, input);
     return NextResponse.json(budget ?? { cleared: true });
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }

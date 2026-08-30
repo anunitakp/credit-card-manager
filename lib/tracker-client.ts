@@ -34,6 +34,22 @@ function json(method: string, body: unknown): RequestInit {
 const noStore: RequestInit = { cache: "no-store" };
 
 /* ------------------------------------------------------------------ */
+/* Bootstrap                                                           */
+/* ------------------------------------------------------------------ */
+
+export interface Bootstrap {
+  transactions: Transaction[];
+  budgets: Budget[];
+  trips: Trip[];
+  notes: Note[];
+}
+
+/** Everything the app needs to start, in one round trip. */
+export function fetchBootstrap(): Promise<Bootstrap> {
+  return fetch("/api/bootstrap", noStore).then((r) => handle<Bootstrap>(r));
+}
+
+/* ------------------------------------------------------------------ */
 /* Transactions                                                        */
 /* ------------------------------------------------------------------ */
 

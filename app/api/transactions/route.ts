@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { toErrorMessage } from "@/lib/errors";
+import { requireUser, unauthorizedResponse } from "@/lib/server-session";
 import { getAllTransactions } from "@/lib/tracker-service";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +16,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
-    const transactions = await getAllTransactions(supabase);
+    const transactions = await getAllTransactions(supabase, userId);
     return NextResponse.json(transactions);
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }

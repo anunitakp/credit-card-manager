@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { getCycleById } from "@/lib/cycle-service";
 import { toErrorMessage } from "@/lib/errors";
+import { requireUser, unauthorizedResponse } from "@/lib/server-session";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
+    const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
     const body = (await req.json()) as Record<string, unknown>;
 
@@ -29,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: "Expense not found." }, { status: 404 });
     }
 
-    const cycle = await getCycleById(supabase, expense.cycle_id);
+    const cycle = await getCycleById(supabase, userId, expense.cycle_id);
     if (!cycle || cycle.status !== "open") {
       return NextResponse.json(
         { error: "This expense belongs to a closed, archived billing cycle and cannot be modified." },
@@ -47,6 +49,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (error) throw error;
     return NextResponse.json(data);
   } catch (err) {
+    const unauthorized = unauthorizedResponse(err);
+    if (unauthorized) return unauthorized;
     return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
   }
 }
