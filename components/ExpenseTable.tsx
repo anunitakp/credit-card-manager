@@ -30,7 +30,7 @@ interface ColumnDef {
 /* The category is already conveyed by the coloured icon in the Expense cell,
    so its own column is dropped below `lg` to leave the expense name room to
    breathe rather than truncating it. */
-const CATEGORY_COL = "hidden w-[124px] lg:table-cell";
+const CATEGORY_COL = "hidden w-[150px] lg:table-cell";
 
 const COLUMNS: ColumnDef[] = [
   { key: "expense_name", label: "Expense", align: "left", className: "w-auto" },
@@ -99,7 +99,7 @@ function RowActions({
         onClick={() => onEdit?.(expense)}
         aria-label={`Edit ${expense.expense_name}`}
         title="Edit"
-        className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-150 hover:bg-primary-tint hover:text-primary"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-150 hover:bg-primary/10 hover:text-primary"
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden />
       </button>
@@ -181,8 +181,8 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
               className={clsx(
                 "rounded-full border px-2.5 py-1 font-medium transition-colors duration-150",
                 active
-                  ? "border-primary/30 bg-primary-tint text-primary"
-                  : "border-border text-text-secondary hover:bg-surface-hover"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-glass text-text-secondary hover:bg-text-primary/[0.05]"
               )}
             >
               {opt.label}
@@ -193,13 +193,13 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
       </div>
 
       {/* ---------- Desktop: real table with column headers ---------- */}
-      <div className="hidden overflow-hidden rounded-xl border border-border bg-surface shadow-card md:block">
+      <div className="glass glass-lit hidden overflow-hidden rounded-2xl md:block">
         <div className="overflow-x-auto">
           {/* table-fixed keeps the declared column widths from growing to fit a
               long expense name — the name column truncates instead. */}
           <table className="w-full min-w-[680px] table-fixed border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface-hover/60">
+              <tr className="border-b border-glass bg-text-primary/[0.03]">
                 {COLUMNS.map((col) => {
                   const active = col.key !== null && sortKey === col.key;
                   return (
@@ -265,11 +265,11 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
                 return (
                   <tr
                     key={expense.id}
-                    className="group border-b border-border transition-colors duration-150 last:border-0 hover:bg-surface-hover"
+                    className="group border-b border-glass transition-colors duration-150 last:border-0 hover:bg-text-primary/[0.035]"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                           <CategoryIcon
                             category={expense.category}
                             className="h-4 w-4 text-primary"
@@ -282,7 +282,9 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
                     </td>
 
                     <td className={clsx("px-4 py-3", CATEGORY_COL)}>
-                      <span className="truncate text-text-secondary">{expense.category}</span>
+                      <span className="block truncate text-text-secondary">
+                        {expense.category}
+                      </span>
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3 text-text-secondary">
@@ -323,7 +325,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
             </tbody>
 
             <tfoot>
-              <tr className="border-t border-border bg-surface-hover/60">
+              <tr className="border-t border-glass bg-text-primary/[0.03]">
                 {/* Kept as discrete cells (rather than a colSpan) so the row stays
                     aligned when the Category column is hidden below lg. */}
                 <td className="whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
@@ -348,7 +350,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
       </div>
 
       {/* ---------- Mobile: stacked cards ---------- */}
-      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface shadow-card md:hidden">
+      <ul className="glass glass-lit divide-y divide-[color:var(--glass-border-soft)] overflow-hidden rounded-2xl md:hidden">
         {sorted.map((expense) => {
           const hasOthers = expense.others_amount > 0;
           const settled = expense.settlement_status === "settled";
@@ -357,7 +359,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
           return (
             <li key={expense.id} className="group px-3.5 py-3">
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                   <CategoryIcon category={expense.category} className="h-4 w-4 text-primary" />
                 </span>
 

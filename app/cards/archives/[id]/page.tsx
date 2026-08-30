@@ -26,7 +26,7 @@ export default function ArchiveDetailPage() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-danger/25 bg-danger-bg p-6 text-center text-danger">
+      <div className="glass glass-lit rounded-2xl border-danger/25 p-6 text-center text-danger">
         {error}
       </div>
     );
@@ -40,7 +40,7 @@ export default function ArchiveDetailPage() {
     <div className="space-y-6">
       <div>
         <Link
-          href="/archives"
+          href="/cards/archives"
           className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />

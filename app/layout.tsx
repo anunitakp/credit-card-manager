@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Nav from "@/components/Nav";
+import AppShell from "@/components/tracker/AppShell";
 import { Providers } from "./providers";
 
 const inter = Inter({
@@ -11,16 +11,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Card Expense Tracker",
-  description: "Personal credit card expense tracker synced across your devices.",
+  title: "Expense Tracker",
+  description:
+    "Personal expense tracker with credit-card and UPI spending in one place, synced across your devices.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
+    { media: "(prefers-color-scheme: light)", color: "#EEF3F8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0F14" },
   ],
 };
 
@@ -29,10 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans">
         <Providers>
-          <Nav />
-          <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-            {children}
-          </main>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

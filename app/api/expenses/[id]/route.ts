@@ -34,6 +34,32 @@ async function assertEditable(
   return { cycleId: expense.cycle_id };
 }
 
+/**
+ * A single credit-card expense, in full.
+ *
+ * The expense tracker shows these through the `all_transactions` view,
+ * which only carries `my_spending`. Editing one needs the underlying
+ * total/others split, so it is fetched here rather than reconstructed.
+ */
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("id", params.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json({ error: "Expense not found." }, { status: 404 });
+    }
+    return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json({ error: toErrorMessage(err) }, { status: 500 });
+  }
+}
+
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = getSupabaseServerClient();

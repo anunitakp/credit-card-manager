@@ -62,14 +62,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-4 sm:items-end sm:bottom-4 sm:right-4 sm:left-auto"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-4 sm:right-4 sm:left-auto sm:items-end"
       >
         {items.map((item) => (
           <div
             key={item.id}
             role="status"
             className={clsx(
-              "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-border bg-surface-elevated px-4 py-3 shadow-modal transition-all duration-200 ease-out",
+              "glass-strong glass-lit pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl px-4 py-3 shadow-modal transition-all duration-200 ease-out",
               item.leaving ? "opacity-0 translate-y-1" : "animate-toast-in opacity-100"
             )}
           >
@@ -87,7 +87,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => remove(item.id)}
               aria-label="Dismiss notification"
-              className="shrink-0 rounded-md p-0.5 text-text-tertiary hover:bg-surface-hover hover:text-text-secondary"
+              className="shrink-0 rounded-lg p-0.5 text-text-tertiary hover:bg-text-primary/5 hover:text-text-secondary"
             >
               <X className="h-4 w-4" />
             </button>

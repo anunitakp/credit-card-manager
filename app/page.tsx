@@ -1,262 +1,222 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Calendar, Lock, Plus } from "lucide-react";
-import { CycleWithExpenses, Expense, ExpenseInput, SettlementStatus } from "@/lib/types";
-import { formatCycleLabelShort, formatDateLabel, isCycleClosable } from "@/lib/billing-cycle";
-import { formatCurrency } from "@/lib/format";
-import {
-  closeCurrentCycle,
-  createExpense,
-  deleteExpense,
-  fetchCurrentCycle,
-  updateExpense,
-  updateSettlement,
-} from "@/lib/api-client";
-import SummaryCards from "@/components/SummaryCards";
-import CategoryChart from "@/components/CategoryChart";
-import ExpenseTable from "@/components/ExpenseTable";
-import ExpenseForm from "@/components/ExpenseForm";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Plus, Wallet } from "lucide-react";
+import GlassButton from "@/components/glass/GlassButton";
+import GlassCard from "@/components/glass/GlassCard";
+import ProgressBar from "@/components/glass/ProgressBar";
+import EmptyState from "@/components/EmptyState";
 import { DashboardSkeleton } from "@/components/Skeleton";
-import { useToast } from "@/components/ToastProvider";
+import CategoryBreakdown from "@/components/tracker/CategoryBreakdown";
+import CategoryDonut from "@/components/tracker/CategoryDonut";
+import TransactionRow from "@/components/tracker/TransactionRow";
+import { useAddExpense } from "@/components/tracker/AddExpenseProvider";
+import { useTracker } from "@/components/tracker/TrackerProvider";
+import { budgetTone, splitBudgets, filterByMonth, summarise } from "@/lib/analytics";
+import { formatCurrency } from "@/lib/format";
+import { currentMonthKey, formatMonthKey } from "@/lib/month";
+import { Category } from "@/lib/types";
+
+/** "Good morning" until noon, "Good afternoon" until 5, "Good evening" after. */
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+const RECENT_COUNT = 6;
 
 export default function DashboardPage() {
-  const { toast } = useToast();
-  const [data, setData] = useState<CycleWithExpenses | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { transactions, budgets, loading, error } = useTracker();
+  const { open } = useAddExpense();
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Expense | null>(null);
+  const monthKey = currentMonthKey();
 
-  const [deleting, setDeleting] = useState<Expense | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  const { summary, monthTransactions, monthlyBudget } = useMemo(() => {
+    const monthTransactions = filterByMonth(transactions, monthKey);
+    return {
+      monthTransactions,
+      summary: summarise(monthTransactions),
+      monthlyBudget: splitBudgets(budgets).overall,
+    };
+  }, [transactions, budgets, monthKey]);
 
-  const [closeOpen, setCloseOpen] = useState(false);
-  const [closeBusy, setCloseBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchCurrentCycle();
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load your billing cycle.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  async function handleAddOrEdit(input: ExpenseInput) {
-    if (!data) return;
-    if (editing) {
-      await updateExpense(editing.id, input);
-      toast({
-        title: "Expense updated",
-        description: `${input.expense_name} · ${formatCurrency(input.total_amount)}`,
-      });
-    } else {
-      await createExpense(data.cycle.id, input);
-      toast({
-        title: "Expense added",
-        description: `${formatCurrency(input.total_amount)} ${input.expense_name} added to this billing cycle.`,
-      });
-    }
-    setFormOpen(false);
-    setEditing(null);
-    await load();
+  function openCategory(category: Category) {
+    router.push(`/expenses?month=${monthKey}&category=${encodeURIComponent(category)}`);
   }
 
-  async function handleSettlementChange(expense: Expense, status: SettlementStatus) {
-    // optimistic update
-    setData((prev) => {
-      if (!prev) return prev;
-      const expenses = prev.expenses.map((e) =>
-        e.id === expense.id ? { ...e, settlement_status: status } : e
-      );
-      return { ...prev, expenses };
-    });
-    try {
-      await updateSettlement(expense.id, status);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update settlement status.");
-      await load();
-    }
-  }
+  if (loading) return <DashboardSkeleton />;
 
-  async function confirmDelete() {
-    if (!deleting) return;
-    setDeleteBusy(true);
-    try {
-      await deleteExpense(deleting.id);
-      toast({ title: "Expense deleted", description: deleting.expense_name });
-      setDeleting(null);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete expense.");
-      toast({ title: "Couldn't delete expense", variant: "error" });
-    } finally {
-      setDeleteBusy(false);
-    }
-  }
-
-  async function confirmClose() {
-    setCloseBusy(true);
-    try {
-      const result = await closeCurrentCycle();
-      setData(result);
-      setCloseOpen(false);
-      toast({ title: "Billing cycle closed", description: "Moved to Archives." });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to close billing cycle.");
-      toast({ title: "Couldn't close billing cycle", variant: "error" });
-    } finally {
-      setCloseBusy(false);
-    }
-  }
-
-  if (loading && !data) {
-    return <DashboardSkeleton />;
-  }
-
-  if (error && !data) {
+  if (error) {
     return (
-      <div className="rounded-xl border border-danger/25 bg-danger-bg p-6 text-center text-danger">
-        {error}
-        <div className="mt-3">
-          <button
-            onClick={load}
-            className="rounded-lg border border-danger/30 px-3 py-1.5 text-sm font-medium hover:bg-danger/10"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <GlassCard className="text-center">
+        <p className="text-sm font-medium text-danger">{error}</p>
+        <p className="mt-1 text-sm text-text-secondary">
+          Check that your Supabase environment variables are set, then reload.
+        </p>
+      </GlassCard>
     );
   }
 
-  if (!data) return null;
-
-  const closable = isCycleClosable(data.cycle.end_date);
+  const used = monthlyBudget > 0 ? (summary.total / monthlyBudget) * 100 : 0;
+  const remaining = monthlyBudget - summary.total;
+  const tone = budgetTone(used);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-            <Calendar className="h-3.5 w-3.5" aria-hidden />
-            Current Billing Cycle
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
-            {formatCycleLabelShort(data.cycle)}
+    <div className="animate-rise-in space-y-5 sm:space-y-6">
+      {/* ---------------------------------------------------------- Greeting */}
+      <header className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-semibold tracking-tight text-text-primary sm:text-[26px]">
+            {greeting()}, Anu <span aria-hidden>👋</span>
           </h1>
+          <p className="mt-1 text-sm text-text-secondary">{formatMonthKey(monthKey)}</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-            className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary-hover"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Add Expense
-          </button>
-          <button
-            onClick={() => closable && setCloseOpen(true)}
-            disabled={!closable}
-            title={
-              closable
-                ? undefined
-                : `You can close this cycle starting ${formatDateLabel(
-                    addOneDayIso(data.cycle.end_date)
-                  )}`
-            }
-            className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-text-primary transition-colors duration-150 hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-          >
-            {!closable && <Lock className="h-3.5 w-3.5" aria-hidden />}
-            Close Month
-          </button>
-        </div>
-      </div>
+        <GlassButton
+          variant="primary"
+          onClick={() => open()}
+          className="hidden shrink-0 sm:inline-flex lg:hidden"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Add Expense
+        </GlassButton>
+      </header>
 
-      {!closable && (
-        <p className="-mt-3 text-xs text-text-tertiary">
-          This cycle runs through {formatDateLabel(data.cycle.end_date)}. You'll be able to close
-          it the day after.
+      {/* ------------------------------------------------------- Hero figure */}
+      <GlassCard weight="strong" glow className="overflow-hidden">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
+          Total spent this month
         </p>
-      )}
+        <p className="tnum mt-2 text-[40px] font-semibold leading-none tracking-tight text-text-primary sm:text-[52px]">
+          {formatCurrency(summary.total)}
+        </p>
 
-      {error && (
-        <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">{error}</p>
-      )}
+        <p className="mt-2.5 text-sm text-text-secondary">
+          {summary.count === 0
+            ? "No transactions yet"
+            : `${summary.count} ${summary.count === 1 ? "transaction" : "transactions"}`}
+          {monthlyBudget > 0 && (
+            <>
+              {" · "}
+              <span className="tnum">{used.toFixed(0)}%</span> of{" "}
+              <span className="tnum">{formatCurrency(monthlyBudget)}</span> budget
+            </>
+          )}
+        </p>
 
-      <SummaryCards summary={data.summary} />
+        {monthlyBudget > 0 ? (
+          <>
+            <ProgressBar value={used} tone={tone} className="mt-5" label="Monthly budget used" />
+            <div className="mt-3 flex items-baseline justify-between gap-3">
+              <span
+                className={
+                  remaining < 0
+                    ? "tnum text-sm font-semibold text-danger"
+                    : "tnum text-sm font-semibold text-text-primary"
+                }
+              >
+                {remaining < 0
+                  ? `${formatCurrency(Math.abs(remaining))} over budget`
+                  : `${formatCurrency(remaining)} remaining`}
+              </span>
+              <Link
+                href="/budget"
+                className="text-xs font-medium text-primary transition-opacity hover:opacity-75"
+              >
+                Adjust budget
+              </Link>
+            </div>
+          </>
+        ) : (
+          <Link
+            href="/budget"
+            className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-glass bg-white/40 px-4 py-3 text-sm transition-colors hover:bg-white/60 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]"
+          >
+            <span className="text-text-secondary">
+              Set a monthly budget to track how much is left.
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          </Link>
+        )}
+      </GlassCard>
 
-      <CategoryChart data={data.summary.categoryBreakdown} />
-
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-text-primary">Recent Expenses</h2>
-        </div>
-        <ExpenseTable
-          expenses={data.expenses}
-          onEdit={(expense) => {
-            setEditing(expense);
-            setFormOpen(true);
-          }}
-          onDelete={(expense) => setDeleting(expense)}
-          onSettlementChange={handleSettlementChange}
+      {monthTransactions.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="Nothing recorded this month"
+          description="Add your first expense and this page fills in — totals, chart and all."
+          action={
+            <GlassButton variant="primary" onClick={() => open()}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Add Expense
+            </GlassButton>
+          }
         />
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+          {/* -------------------------------------------------------- Donut */}
+          {/* Column layout with the ring on `flex-1`: the two cards in this
+              grid stretch to match heights, and without it the ring sat at
+              its fixed height with dead space underneath. */}
+          <GlassCard className="flex flex-col">
+            <h2 className="text-base font-semibold tracking-tight text-text-primary">
+              Spending by Category
+            </h2>
+            <p className="mt-0.5 text-xs text-text-tertiary">
+              Tap a slice to see those transactions
+            </p>
+            <CategoryDonut
+              data={summary.byCategory}
+              total={summary.total}
+              onSelect={openCategory}
+              centerLabel={formatMonthKey(monthKey)}
+              className="mt-2 min-h-[230px] flex-1"
+            />
+          </GlassCard>
 
-      <ExpenseForm
-        open={formOpen}
-        initial={editing}
-        onClose={() => {
-          setFormOpen(false);
-          setEditing(null);
-        }}
-        onSubmit={handleAddOrEdit}
-      />
+          {/* ------------------------------------------------ Category list */}
+          <GlassCard className="flex flex-col">
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h2 className="text-base font-semibold tracking-tight text-text-primary">
+                Category Spending
+              </h2>
+              {summary.byCategory.length > 6 && (
+                <Link
+                  href={`/statistics?month=${monthKey}`}
+                  className="text-xs font-medium text-primary transition-opacity hover:opacity-75"
+                >
+                  See all
+                </Link>
+              )}
+            </div>
+            <CategoryBreakdown data={summary.byCategory} limit={6} onSelect={openCategory} />
+          </GlassCard>
+        </div>
+      )}
 
-      <ConfirmDialog
-        open={!!deleting}
-        title="Delete this expense?"
-        description={`This will permanently remove "${deleting?.expense_name ?? ""}" from this billing cycle.`}
-        confirmLabel="Delete"
-        destructive
-        busy={deleteBusy}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(null)}
-      />
-
-      <ConfirmDialog
-        open={closeOpen}
-        title="Close this billing cycle?"
-        description="Are you sure you want to close this billing cycle? Once closed, this tracker will become an archive (read-only) and a new billing cycle will be created automatically."
-        confirmLabel="Close Month"
-        busy={closeBusy}
-        onConfirm={confirmClose}
-        onCancel={() => setCloseOpen(false)}
-      />
+      {/* --------------------------------------------- Recent transactions */}
+      {monthTransactions.length > 0 && (
+        <GlassCard padded={false} className="px-1.5 py-4 sm:px-2.5 sm:py-5">
+          <div className="mb-1 flex items-baseline justify-between gap-3 px-3 sm:px-4">
+            <h2 className="text-base font-semibold tracking-tight text-text-primary">
+              Recent Transactions
+            </h2>
+            <Link
+              href="/expenses"
+              className="text-xs font-medium text-primary transition-opacity hover:opacity-75"
+            >
+              View all
+            </Link>
+          </div>
+          {monthTransactions.slice(0, RECENT_COUNT).map((t) => (
+            <TransactionRow key={`${t.account}-${t.id}`} transaction={t} readOnly />
+          ))}
+        </GlassCard>
+      )}
     </div>
   );
-}
-
-/** Adds one calendar day to a YYYY-MM-DD string, for the "closable from" hint. */
-function addOneDayIso(isoDate: string): string {
-  const [year, month1, day] = isoDate.split("-").map(Number);
-  const d = new Date(year, month1 - 1, day + 1);
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const dd = `${d.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${dd}`;
 }

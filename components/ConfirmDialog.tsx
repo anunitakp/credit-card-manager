@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 
@@ -26,23 +28,28 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
-  if (!open) return null;
+  // Mounted on the body so it is never trapped inside a glass card's
+  // stacking context, and so its blur frosts the whole page.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgb(6_14_20_/_0.45)] p-4 backdrop-blur-md animate-fade-in"
       role="alertdialog"
       aria-modal="true"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="w-full max-w-sm rounded-2xl bg-surface-elevated p-5 shadow-modal animate-modal-in">
+      <div className="glass-strong glass-lit w-full max-w-sm rounded-3xl p-5 shadow-modal animate-modal-in">
         <div className="flex items-start gap-3">
           <span
             className={clsx(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-              destructive ? "bg-danger-bg" : "bg-primary-tint"
+              destructive ? "bg-danger/10" : "bg-primary/10"
             )}
           >
             <AlertTriangle
@@ -58,7 +65,7 @@ export default function ConfirmDialog({
         <div className="mt-5 flex gap-3">
           <button
             onClick={onCancel}
-            className="h-10 flex-1 rounded-lg border border-border text-sm font-medium text-text-primary transition-colors duration-150 hover:bg-surface-hover"
+            className="h-11 flex-1 rounded-xl border border-glass bg-white/45 text-sm font-medium text-text-primary transition-all duration-200 active:scale-[0.97] hover:bg-white/70 dark:bg-white/[0.05] dark:hover:bg-white/[0.09]"
           >
             {cancelLabel}
           </button>
@@ -66,7 +73,7 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             disabled={busy}
             className={clsx(
-              "h-10 flex-1 rounded-lg text-sm font-semibold text-white shadow-sm transition-colors duration-150 disabled:opacity-60",
+              "h-11 flex-1 rounded-xl text-sm font-semibold text-white shadow-card transition-all duration-200 active:scale-[0.97] disabled:opacity-60",
               destructive ? "bg-danger hover:brightness-95" : "bg-primary hover:bg-primary-hover"
             )}
           >
@@ -74,6 +81,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

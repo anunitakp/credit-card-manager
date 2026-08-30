@@ -54,8 +54,8 @@ export default function ArchivesPage() {
           {items.map((item) => (
             <li key={item.id}>
               <Link
-                href={`/archives/${item.id}`}
-                className="group flex items-center gap-4 rounded-xl border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
+                href={`/cards/archives/${item.id}`}
+                className="glass glass-lit group flex items-center gap-4 rounded-2xl p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-border/60">
                   <Archive className="h-4 w-4 text-text-secondary" aria-hidden />

@@ -1,14 +1,14 @@
 import clsx from "clsx";
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={clsx("animate-pulse rounded-md bg-border/70", className)} />;
+  return <div className={clsx("animate-pulse rounded-lg bg-text-primary/[0.07]", className)} />;
 }
 
 export function SummaryCardsSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-border bg-surface p-4">
+        <div key={i} className="glass rounded-2xl p-4">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="mt-3 h-7 w-24" />
           <Skeleton className="mt-2 h-3 w-16" />
@@ -20,7 +20,7 @@ export function SummaryCardsSkeleton() {
 
 export function ExpenseListSkeleton() {
   return (
-    <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+    <div className="glass divide-y divide-[color:var(--glass-border-soft)] rounded-2xl">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-4 py-3.5">
           <Skeleton className="h-9 w-9 shrink-0 rounded-full" />

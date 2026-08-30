@@ -1,5 +1,11 @@
--- Credit Card Expense Tracker — Supabase schema
--- Run this once in your Supabase project's SQL editor (Project → SQL Editor → New query).
+-- Base schema — the Credit Card Manager's billing cycles and expenses.
+--
+-- Run this once in your Supabase project's SQL editor (Project → SQL Editor →
+-- New query), and then run `migration-01-expense-tracker.sql`, which adds the
+-- expense tracker's tables on top and creates the `all_transactions` view that
+-- both halves of the app read from.
+--
+-- If your project already has these two tables, skip straight to the migration.
 
 create extension if not exists pgcrypto;
 

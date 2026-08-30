@@ -1,16 +1,18 @@
 import {
-  Utensils,
-  ShoppingCart,
-  Home,
-  Shirt,
-  Sparkles,
-  Droplet,
+  BookOpen,
   Car,
-  Landmark,
-  HeartPulse,
+  Droplet,
   Gift,
-  MoreHorizontal,
+  HeartPulse,
+  Home,
+  Landmark,
   Laptop,
+  Luggage,
+  MoreHorizontal,
+  Shirt,
+  ShoppingCart,
+  Sparkles,
+  Utensils,
   type LucideIcon,
 } from "lucide-react";
 import { Category } from "@/lib/types";
@@ -24,10 +26,12 @@ export const CATEGORY_ICONS: Record<Category, LucideIcon> = {
   Skincare: Droplet,
   Transport: Car,
   Culture: Landmark,
+  "Books & Subscription": BookOpen,
   Therapy: HeartPulse,
   Gift: Gift,
-  Miscellaneous: MoreHorizontal,
   Electronics: Laptop,
+  Trip: Luggage,
+  Miscellaneous: MoreHorizontal,
 };
 
 interface Props {

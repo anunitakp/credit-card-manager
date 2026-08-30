@@ -12,10 +12,10 @@ interface CardDef {
 }
 
 const ACCENT_CLASSES: Record<CardDef["accent"], { icon: string; iconBg: string; value: string }> = {
-  neutral: { icon: "text-text-secondary", iconBg: "bg-border/60", value: "text-text-primary" },
-  primary: { icon: "text-primary", iconBg: "bg-primary-tint", value: "text-primary" },
-  success: { icon: "text-success", iconBg: "bg-success-bg", value: "text-text-primary" },
-  warning: { icon: "text-warning", iconBg: "bg-warning-bg", value: "text-text-primary" },
+  neutral: { icon: "text-text-secondary", iconBg: "bg-text-primary/[0.06]", value: "text-text-primary" },
+  primary: { icon: "text-primary", iconBg: "bg-primary/10", value: "text-primary" },
+  success: { icon: "text-success", iconBg: "bg-success/10", value: "text-text-primary" },
+  warning: { icon: "text-warning", iconBg: "bg-warning/10", value: "text-text-primary" },
 };
 
 export default function SummaryCards({ summary }: { summary: CycleSummary }) {
@@ -57,7 +57,7 @@ export default function SummaryCards({ summary }: { summary: CycleSummary }) {
         return (
           <div
             key={card.label}
-            className="group rounded-xl border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover"
+            className="glass glass-lit group rounded-2xl p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover"
           >
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">

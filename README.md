@@ -1,126 +1,189 @@
-# Credit Card Expense Tracker
+# Expense Tracker
 
-A personal credit-card expense tracker built around a 16th → 15th billing
-cycle, with cloud-synced data (Supabase/Postgres) so it stays in sync across
-your laptop, phone, and tablet.
+A personal expense tracker with a glassmorphism interface, built around one
+rule: **there is exactly one row per transaction, and both halves of the app
+read it.**
+
+Credit-card spending is entered in the Credit Card Manager, which tracks a
+16th → 15th billing cycle. UPI spending is entered in the tracker. Neither is
+ever copied into the other — the tracker reads a database view that unions the
+two, so a card expense appears in the dashboard, budgets and statistics the
+moment it is saved, and editing or deleting it there updates or removes it
+everywhere. Nothing to sync, nothing to double-enter, no way to duplicate.
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript) — frontend + API routes in one app
+- **Next.js 14** (App Router, TypeScript) — frontend and API routes in one app
 - **Supabase (Postgres)** — persistent cloud database, free tier
-- **Tailwind CSS** — responsive styling
-- **Recharts** — category spending donut chart
-- **Vercel** — hosting (free tier), gives you one HTTPS URL for every device
+- **Tailwind CSS** — the glass design system lives in `app/globals.css`
+- **Recharts** — donut and bar charts
+- **Vercel** — hosting, one HTTPS URL for every device
 
-There is no login. The app is meant to be used by one person; if you ever
-want to add a password gate later, that's a small addition — just ask.
+There is no login. The app is meant to be used by one person.
 
 ---
 
-## 1. Create your Supabase project (one-time, ~3 minutes)
+## Setup
 
-Supabase is where your expense data actually lives — it's a hosted Postgres
-database with a free tier that's more than enough for this app. **You'll
-need to do this step yourself** (account creation isn't something I can do
-on your behalf):
+### 1. Supabase project
 
-1. Go to [supabase.com](https://supabase.com) and sign up for a free account.
-2. Click **New Project**. Pick any name/region/password (the DB password
-   isn't something this app needs — Supabase manages that internally).
-3. Once the project is ready, open **SQL Editor** in the left sidebar, click
-   **New query**, paste in the contents of [`supabase/schema.sql`](supabase/schema.sql)
-   from this repo, and click **Run**. This creates the `billing_cycles` and
-   `expenses` tables.
-4. Open **Project Settings → API**. You'll need two values from this page:
-   - **Project URL** (looks like `https://xxxxxxxxxxxx.supabase.co`)
-   - **`service_role` secret key** (⚠️ not the `anon`/`public` key — the
-     `service_role` key, kept secret, used only on the server)
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor → New query** and run, in this order:
+   - [`supabase/schema.sql`](supabase/schema.sql) — billing cycles and
+     credit-card expenses. Skip if your project already has these.
+   - [`supabase/migration-01-expense-tracker.sql`](supabase/migration-01-expense-tracker.sql)
+     — the tracker's tables and the `all_transactions` view. **Required.**
+     Without it the app starts but every page reports a missing table.
+3. Open **Project Settings → API** and copy the **Project URL** and the
+   **`service_role` secret key** (not the `anon` key).
 
-Keep this tab open — you'll paste both values in step 2 and again in step 3.
-
-## 2. Run it locally (optional, to try it before deploying)
+### 2. Run locally
 
 ```bash
 npm install
-cp .env.local.example .env.local
 ```
 
-Open `.env.local` and fill in the two values from step 1:
+Create `.env.local`:
 
 ```
 SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Then:
-
 ```bash
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000).
+Then open [http://localhost:3000](http://localhost:3000).
 
-## 3. Deploy to Vercel so it's reachable from every device
+### 3. Deploy
 
-1. Push this project to a GitHub repository (ask me and I can do this for
-   you once you've created the repo, or run it yourself):
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin <your-repo-url>
-   git push -u origin main
-   ```
-2. Go to [vercel.com](https://vercel.com) and sign up for a free account
-   (again, this needs to be you — I can't create accounts on your behalf).
-3. Click **Add New → Project**, import the GitHub repo you just pushed.
-4. In the **Environment Variables** step, add the same two values from
-   step 1:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-5. Click **Deploy**. A few minutes later you'll have a public URL like
-   `https://your-app.vercel.app` — open that on your phone, tablet, or any
-   other device and you're looking at the same live data.
-
-From then on, any change you push to the repo redeploys automatically.
+Push to GitHub, import the repo at [vercel.com](https://vercel.com), add the
+same two environment variables, and deploy. Every later push redeploys.
 
 ---
 
+## How the data fits together
+
+```
+        Credit Card Manager                 Expense Tracker
+        (16th → 15th cycles)                (UPI entries)
+                 │                                 │
+                 ▼                                 ▼
+          expenses table                    upi_expenses table
+                 │                                 │
+                 └──────────────┬──────────────────┘
+                                ▼
+                    all_transactions  (view)
+                                │
+        ┌───────────┬───────────┼───────────┬─────────────┐
+        ▼           ▼           ▼           ▼             ▼
+    Dashboard   Expenses     Budget    Statistics    Categories
+```
+
+`all_transactions` is a plain SQL `union all`. Each row keeps its own table's
+primary key, so a credit-card expense is never copied, never re-imported and
+never duplicated — there is only ever the one row, seen from two places.
+
+**A credit-card expense contributes `my_spending`** (its total minus whatever
+someone else is paying back), because that is what actually left your pocket.
+The card manager still shows the full total and the settlement status.
+
+Adding an expense with the account set to **Credit Card** writes into the card
+manager's current open billing cycle rather than creating a tracker-side copy,
+so it does not matter which screen you start from.
+
+An expense is five fields and no more: description, amount, category, date and
+account. There are no subcategories, and no created/updated timestamps are
+shown anywhere.
+
+### Budgets
+
+There is **one standing budget**, not one per month. Set the overall monthly
+figure and any per-category figures once on `/budget`, and they apply to every
+month until you edit them. A consequence worth knowing: looking at a past
+month measures it against today's budget, because only one budget exists.
+
+Budgets stay out of the numbers on `/statistics` — everything there is derived
+from expenses alone. Budget progress appears only on `/budget` and on the
+dashboard's headline card.
+
+### Tables
+
+| Table | Holds |
+| --- | --- |
+| `billing_cycles` | One row per 16th → 15th credit-card cycle, `open` or `closed`. |
+| `expenses` | Credit-card expenses, belonging to a cycle. `my_spending` is a generated column. |
+| `upi_expenses` | UPI expenses, entered in the tracker. |
+| `budgets` | One standing budget per category, applied to every month; `category is null` is the overall monthly budget. |
+| `trips` | Standalone travel records. Not counted in monthly spending. |
+| `notes` | Free-form notes. |
+| `all_transactions` | View: `expenses` ∪ `upi_expenses`, the tracker's only read source. |
+
+---
+
+## Pages
+
+| Route | What it does |
+| --- | --- |
+| `/` | Dashboard — current month only: total, budget progress, category donut, ranked categories, recent transactions. |
+| `/expenses` | Full history. Search, filter by month/category/account/amount, sort, edit, delete. |
+| `/budget` | The standing overall and per-category budgets. Over-budget categories go red. |
+| `/statistics` | Monthly and Yearly tabs, derived from expenses alone, with drill-down from any month or category into the underlying transactions. |
+| `/trips` | Trip records — date, place, cost, notes. |
+| `/notes` | Notes. |
+| `/salary` | Placeholder; the route and layout exist so income tracking can be added later without restructuring. |
+| `/cards` | The Credit Card Manager: current cycle, settlement tracking, close-the-month. |
+| `/cards/archives` | Closed cycles, read-only. |
+
 ## How the billing cycle works
 
-- Your statement closes on the **15th** of every month, so each tracker
-  covers **the 16th of one month through the 15th of the next**.
-- The app always figures out the correct "current" cycle automatically —
-  see [`lib/billing-cycle.ts`](lib/billing-cycle.ts).
-- Clicking **Close Current Month**:
-  1. Marks the current cycle `closed` (it moves to **Archives**, read-only,
-     with all its expenses and settlement statuses preserved exactly as they
-     were).
-  2. Immediately creates the next cycle (the 16th right after the one that
-     just closed), starting empty.
-- Archived cycles are never modified — the API rejects any add/edit/delete/
-  settlement-toggle request against a closed cycle, even if attempted
-  directly (not just hidden in the UI).
-
-## Data model
-
-- `billing_cycles` — one row per 16th→15th cycle, `status` is `open` or
-  `closed`.
-- `expenses` — belongs to a cycle; `my_spending` is a **generated column**
-  (`total_amount − others_amount`), computed by Postgres so it's always
-  correct. `settlement_status` is `not_settled` / `settled`, only meaningful
-  when `others_amount > 0`.
+- The statement closes on the **15th**, so each cycle covers the **16th of one
+  month through the 15th of the next**. See [`lib/billing-cycle.ts`](lib/billing-cycle.ts).
+- **Close Current Month** archives the cycle and opens the next one. Archived
+  cycles are immutable — the API rejects any change to them, not just the UI.
+- The expense tracker slices the same rows by **calendar month** instead. Both
+  views are correct; they are just different cuts of one dataset.
 
 ## Project structure
 
 ```
 app/
-  page.tsx                 Current-cycle dashboard
-  archives/page.tsx         Archives list
-  archives/[id]/page.tsx    Read-only archived cycle detail
-  api/cycles/...            Cycle read/close endpoints
-  api/expenses/...          Expense create/update/delete/settlement endpoints
-components/                 UI: forms, table, charts, dialogs
-lib/                        Billing-cycle math, Supabase client, validation
-supabase/schema.sql          Database schema — run once in Supabase's SQL editor
+  page.tsx                    Dashboard
+  expenses/ budget/ statistics/ trips/ notes/ salary/
+  cards/                      Credit Card Manager
+  api/
+    transactions/             The unified read
+    upi-expenses/  budgets/  trips/  notes/
+    cycles/  expenses/        Credit Card Manager endpoints
+components/
+  glass/                      GlassCard, GlassButton, GlassInput, GlassModal,
+                              GlassSelect, GlassDropdown, SegmentedControl,
+                              ProgressBar, MonthPicker, Popover
+  tracker/                    AppShell, Sidebar, BottomNav, TrackerProvider,
+                              AddExpenseProvider, charts, rows, cards
+lib/
+  analytics.ts                Every derived number, from one transaction array
+  month.ts  format.ts         Calendar-month helpers, ₹ Indian formatting
+  tracker-service.ts          Server-side queries
+  billing-cycle.ts            16th → 15th date logic
+supabase/
+  schema.sql                  Base schema
+  migration-01-expense-tracker.sql
 ```
+
+## Design system
+
+Icy-blue glassmorphism, defined once in `app/globals.css`:
+
+- A fixed **atmosphere layer** (gradient plus three blurred colour blobs) sits
+  behind everything. Every glass surface frosts *that*, which is what makes
+  the blur read as depth rather than as flat transparency.
+- Three glass weights — `.glass-subtle`, `.glass`, `.glass-strong` — so cards
+  holding important numbers are more opaque and stay readable.
+- Blue is an **accent**, not the interface: neutral milky glass on a pale
+  glacier wash, with deep icy blue reserved for actions and positive states,
+  and money in charcoal (light) or near-white (dark).
+- Light and dark are separate palettes, toggled by the control at the bottom
+  of the sidebar or in the mobile **More** sheet.
+- Amounts use Indian digit grouping throughout — ₹1,25,000, never ₹125,000.
