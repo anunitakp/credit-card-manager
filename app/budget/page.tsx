@@ -247,7 +247,7 @@ export default function BudgetPage() {
 
             return (
               <li key={category} className="px-1 py-3 sm:px-3">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div className="flex items-center gap-3">
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
                     style={{ backgroundColor: `${color}1f`, color }}
@@ -260,7 +260,10 @@ export default function BudgetPage() {
                     {category}
                   </span>
 
-                  <div className="order-last w-full sm:order-none sm:w-28">
+                  {/* The input stays on the title row at every width. Dropping
+                      it onto its own full-width line below, as it used to, made
+                      each row three tall bands of mostly empty space. */}
+                  <div className="w-[94px] shrink-0 sm:w-28">
                     <label className="sr-only" htmlFor={`budget-${category}`}>
                       {category} budget
                     </label>
@@ -281,13 +284,14 @@ export default function BudgetPage() {
                     />
                   </div>
 
-                  <span className="tnum w-20 shrink-0 text-right text-sm text-text-secondary sm:w-24">
+                  {/* Desktop keeps the aligned columns under their headings. */}
+                  <span className="tnum hidden w-24 shrink-0 text-right text-sm text-text-secondary sm:block">
                     {formatCurrency(spent)}
                   </span>
 
                   <span
                     className={clsx(
-                      "tnum w-24 shrink-0 text-right text-sm font-semibold sm:w-28",
+                      "tnum hidden w-28 shrink-0 text-right text-sm font-semibold sm:block",
                       budget === 0
                         ? "text-text-tertiary"
                         : line.over
@@ -301,6 +305,30 @@ export default function BudgetPage() {
                         ? `−${formatCurrency(Math.abs(line.remaining))}`
                         : formatCurrency(line.remaining)}
                   </span>
+                </div>
+
+                {/* Mobile has no column headings, so the two figures carry
+                    their own labels rather than sitting there unexplained. */}
+                <div className="mt-2 flex items-baseline justify-between gap-3 text-xs sm:hidden">
+                  <span className="text-text-secondary">
+                    Spent{" "}
+                    <span className="tnum font-semibold text-text-primary">
+                      {formatCurrency(spent)}
+                    </span>
+                  </span>
+                  {budget > 0 && (
+                    <span className="text-text-secondary">
+                      {line.over ? "Over by" : "Left"}{" "}
+                      <span
+                        className={clsx(
+                          "tnum font-semibold",
+                          line.over ? "text-danger" : "text-text-primary"
+                        )}
+                      >
+                        {formatCurrency(Math.abs(line.remaining))}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
                 {budget > 0 && (
