@@ -14,6 +14,21 @@ export const metadata: Metadata = {
   title: "Expense Tracker",
   description:
     "Personal expense tracker with credit-card and UPI spending in one place, synced across your devices.",
+  applicationName: "Expense Tracker",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    // iOS has no manifest: these are what make "Add to Home Screen" open the
+    // app full-screen with the right name instead of in Safari.
+    capable: true,
+    title: "Expenses",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
