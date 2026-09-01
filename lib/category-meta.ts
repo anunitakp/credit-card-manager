@@ -1,4 +1,4 @@
-import { Category } from "./types";
+import { Category, TripCategory } from "./types";
 
 /**
  * Chart colours, one per category.
@@ -21,6 +21,8 @@ export const CATEGORY_COLORS_LIGHT: Record<Category, string> = {
   Beauty: "#E0A07C",
   Skincare: "#7FBBD9",
   Transport: "#C79A3E",
+  Fuel: "#8C6B4F",
+  "Tea & Coffee": "#B98A5E",
   Culture: "#7A72C4",
   "Books & Subscription": "#5B8FD1",
   Therapy: "#C56D6D",
@@ -38,6 +40,8 @@ export const CATEGORY_COLORS_DARK: Record<Category, string> = {
   Beauty: "#F0BC9E",
   Skincare: "#A9D9F0",
   Transport: "#E8C069",
+  Fuel: "#C7A582",
+  "Tea & Coffee": "#DDB98A",
   Culture: "#A79BEC",
   "Books & Subscription": "#8FB2E8",
   Therapy: "#EC9898",
@@ -49,5 +53,39 @@ export const CATEGORY_COLORS_DARK: Record<Category, string> = {
 
 export function categoryColor(category: Category, dark: boolean): string {
   const map = dark ? CATEGORY_COLORS_DARK : CATEGORY_COLORS_LIGHT;
+  return map[category] ?? (dark ? "#AEBAC4" : "#8E9AA3");
+}
+
+/**
+ * Chart colours for trip categories, on the same anchor-and-walk scheme as
+ * the main category palette above but a separate set — the two never share a
+ * ring, so there is no need for their hues to line up.
+ */
+export const TRIP_CATEGORY_COLORS_LIGHT: Record<TripCategory, string> = {
+  Travel: "#1E7FA8",
+  Stay: "#4C9E8F",
+  Transport: "#C79A3E",
+  Food: "#A874A8",
+  Dress: "#E0A07C",
+  "Accessories & Toiletries": "#7FBBD9",
+  Souvenirs: "#7A72C4",
+  Activities: "#C56D6D",
+  Others: "#8E9AA3",
+};
+
+export const TRIP_CATEGORY_COLORS_DARK: Record<TripCategory, string> = {
+  Travel: "#5CC3EC",
+  Stay: "#7FD0BE",
+  Transport: "#E8C069",
+  Food: "#D9A2D9",
+  Dress: "#F0BC9E",
+  "Accessories & Toiletries": "#A9D9F0",
+  Souvenirs: "#A79BEC",
+  Activities: "#EC9898",
+  Others: "#AEBAC4",
+};
+
+export function tripCategoryColor(category: TripCategory, dark: boolean): string {
+  const map = dark ? TRIP_CATEGORY_COLORS_DARK : TRIP_CATEGORY_COLORS_LIGHT;
   return map[category] ?? (dark ? "#AEBAC4" : "#8E9AA3");
 }

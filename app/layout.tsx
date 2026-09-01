@@ -1,14 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/tracker/AppShell";
 import { Providers } from "./providers";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Expense Tracker",
@@ -59,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // navigation into a server render just to print a username. The name comes
   // from a readable cookie on the client instead.
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans">
         <Providers>
           <AppShell>{children}</AppShell>

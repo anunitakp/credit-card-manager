@@ -6,6 +6,8 @@ export const CATEGORIES = [
   "Beauty",
   "Skincare",
   "Transport",
+  "Fuel",
+  "Tea & Coffee",
   "Culture",
   "Books & Subscription",
   "Therapy",
@@ -153,4 +155,100 @@ export interface Note {
 export interface NoteInput {
   title: string;
   content: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Salary                                                              */
+/* ------------------------------------------------------------------ */
+
+/** What came in for one month. `month` is stored as YYYY-MM-01. */
+export interface SalaryMonth {
+  id: string;
+  month: string;
+  amount: number;
+  notes: string | null;
+}
+
+export interface SalaryMonthInput {
+  month: string;
+  amount: number;
+  notes: string | null;
+}
+
+/**
+ * One line of what a month's money was used for. Labels are free text —
+ * "Rent", "SIP", "Sent home" — because what you do with a salary does not
+ * map onto the expense categories.
+ */
+export interface SalaryAllocation {
+  id: string;
+  month: string;
+  label: string;
+  amount: number;
+}
+
+export interface SalaryAllocationInput {
+  month: string;
+  label: string;
+  amount: number;
+}
+
+/**
+ * Kept apart from salary on purpose: a bonus is an exception, and folding one
+ * into a month's salary would make that month read as a permanent raise.
+ */
+export interface Bonus {
+  id: string;
+  received_on: string;
+  label: string;
+  amount: number;
+  notes: string | null;
+}
+
+export interface BonusInput {
+  received_on: string;
+  label: string;
+  amount: number;
+  notes: string | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Trip expenses                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How spending inside a trip is broken down. Deliberately separate from the
+ * everyday `CATEGORIES`: on a holiday "Stay" and "Souvenirs" matter, and
+ * "Household" or "Therapy" do not.
+ */
+export const TRIP_CATEGORIES = [
+  "Travel",
+  "Stay",
+  "Transport",
+  "Food",
+  "Dress",
+  "Accessories & Toiletries",
+  "Souvenirs",
+  "Activities",
+  "Others",
+] as const;
+
+export type TripCategory = (typeof TRIP_CATEGORIES)[number];
+
+/**
+ * Files one expense against one trip. The expense itself is untouched — it
+ * stays in the Expenses list and, if it came from a card, in its billing
+ * cycle. This only records that it belongs to a trip, and under what.
+ */
+export interface TripExpenseLink {
+  id: string;
+  trip_id: string;
+  transaction_id: string;
+  trip_category: TripCategory;
+}
+
+export interface TripExpenseLinkInput {
+  trip_id: string;
+  transaction_id: string;
+  trip_category: TripCategory;
 }

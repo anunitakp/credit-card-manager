@@ -60,6 +60,16 @@ export function formatMonthKey(monthKey: string): string {
 
 
 
+/** "2026-09" → "2026-09-01", the storage form for a salary month. */
+export function monthKeyToDate(monthKey: string): string {
+  return `${monthKey}-01`;
+}
+
+/** "2026-09-01" → "2026-09" */
+export function dateToMonthKey(date: string): string {
+  return date.slice(0, 7);
+}
+
 /** Steps a month key forward or backward by `delta` months. */
 export function shiftMonthKey(monthKey: string, delta: number): string {
   const [year, month] = monthKey.split("-").map(Number);

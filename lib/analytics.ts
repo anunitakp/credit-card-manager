@@ -129,6 +129,38 @@ export interface BudgetLine {
 }
 
 /**
+ * Categories held apart from everyday spending.
+ *
+ * A holiday is a one-off. Leaving it in would swamp an ordinary month, take a
+ * share of the category breakdown, and make every "this month" figure a poor
+ * read on how normal life is going. So Trip spending is excluded from every
+ * summary — the dashboard headline, the donut, the category shares, the
+ * budget, and Statistics.
+ *
+ * It is excluded, not hidden: each surface reports the excluded total
+ * separately, and the full Expenses list still shows every trip expense.
+ */
+export const EXCLUDED_FROM_SPENDING: readonly Category[] = ["Trip"];
+
+export function isEverydaySpending(t: Transaction): boolean {
+  return !EXCLUDED_FROM_SPENDING.includes(t.category);
+}
+
+/** The transactions every spending summary is built from. */
+export function everydayOnly(transactions: Transaction[]): Transaction[] {
+  return transactions.filter(isEverydaySpending);
+}
+
+/** The total held apart, so a page can report it rather than lose it. */
+export function excludedTotal(transactions: Transaction[]): number {
+  return round2(
+    transactions
+      .filter((t) => !isEverydaySpending(t))
+      .reduce((sum, t) => sum + t.amount, 0)
+  );
+}
+
+/**
  * Splits the standing budgets into the overall figure and a per-category
  * lookup.
  *

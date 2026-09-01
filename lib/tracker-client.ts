@@ -1,10 +1,18 @@
 import {
+  Bonus,
+  BonusInput,
   Budget,
   BudgetInput,
   Note,
   NoteInput,
   Transaction,
+  SalaryAllocation,
+  SalaryAllocationInput,
+  SalaryMonth,
+  SalaryMonthInput,
   Trip,
+  TripExpenseLink,
+  TripExpenseLinkInput,
   TripInput,
   UpiExpenseInput,
 } from "./types";
@@ -120,4 +128,67 @@ export function updateNote(id: string, input: NoteInput) {
 
 export function deleteNote(id: string) {
   return fetch(`/api/notes/${id}`, { method: "DELETE" }).then((r) => handle(r));
+}
+
+/* ------------------------------------------------------------------ */
+/* Salary                                                              */
+/* ------------------------------------------------------------------ */
+
+export interface SalaryData {
+  months: SalaryMonth[];
+  allocations: SalaryAllocation[];
+  bonuses: Bonus[];
+}
+
+/** Fetched by the Salary page alone, not as part of the app bootstrap. */
+export function fetchSalary(): Promise<SalaryData> {
+  return fetch("/api/salary", noStore).then((r) => handle<SalaryData>(r));
+}
+
+export function saveSalaryMonth(input: SalaryMonthInput) {
+  return fetch("/api/salary", json("PUT", input)).then((r) => handle(r));
+}
+
+export function createAllocation(input: SalaryAllocationInput) {
+  return fetch("/api/salary/allocations", json("POST", input)).then((r) => handle(r));
+}
+
+export function updateAllocation(id: string, input: SalaryAllocationInput) {
+  return fetch(`/api/salary/allocations/${id}`, json("PUT", input)).then((r) => handle(r));
+}
+
+export function deleteAllocation(id: string) {
+  return fetch(`/api/salary/allocations/${id}`, { method: "DELETE" }).then((r) => handle(r));
+}
+
+export function createBonus(input: BonusInput) {
+  return fetch("/api/salary/bonuses", json("POST", input)).then((r) => handle(r));
+}
+
+export function updateBonus(id: string, input: BonusInput) {
+  return fetch(`/api/salary/bonuses/${id}`, json("PUT", input)).then((r) => handle(r));
+}
+
+export function deleteBonus(id: string) {
+  return fetch(`/api/salary/bonuses/${id}`, { method: "DELETE" }).then((r) => handle(r));
+}
+
+/* ------------------------------------------------------------------ */
+/* Trip expense links                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Fetched by the Trips page alone, not as part of the app bootstrap. */
+export function fetchTripLinks(): Promise<TripExpenseLink[]> {
+  return fetch("/api/trip-links", noStore).then((r) => handle<TripExpenseLink[]>(r));
+}
+
+/** Files an expense against a trip, or moves it to a different one. */
+export function linkTripExpense(input: TripExpenseLinkInput) {
+  return fetch("/api/trip-links", json("POST", input)).then((r) => handle(r));
+}
+
+export function unlinkTripExpense(transactionId: string) {
+  return fetch(`/api/trip-links/${transactionId}`, { method: "DELETE" }).then((r) =>
+    handle(r)
+  );
 }

@@ -13,7 +13,16 @@ import { useToast } from "@/components/ToastProvider";
 import PageHeader from "@/components/tracker/PageHeader";
 import { useTracker } from "@/components/tracker/TrackerProvider";
 import { useIsDark } from "@/components/tracker/useIsDark";
-import { budgetLine, budgetTone, splitBudgets, filterByMonth, summarise } from "@/lib/analytics";
+import {
+  EXCLUDED_FROM_SPENDING,
+  budgetLine,
+  budgetTone,
+  everydayOnly,
+  excludedTotal as tripTotal,
+  splitBudgets,
+  filterByMonth,
+  summarise,
+} from "@/lib/analytics";
 import { categoryColor } from "@/lib/category-meta";
 import { formatCurrency } from "@/lib/format";
 import { currentMonthKey, formatMonthKey } from "@/lib/month";
@@ -44,10 +53,20 @@ export default function BudgetPage() {
 
   const { overall, byCategory } = useMemo(() => splitBudgets(budgets), [budgets]);
 
-  const summary = useMemo(
-    () => summarise(filterByMonth(transactions, month)),
+  const monthTransactions = useMemo(
+    () => filterByMonth(transactions, month),
     [transactions, month]
   );
+
+  // Budgets measure everyday spending, so trip spending is left out of every
+  // figure on this page. It is still counted everywhere else.
+  const summary = useMemo(
+    () => summarise(everydayOnly(monthTransactions)),
+    [monthTransactions]
+  );
+
+  /** Trip spending this month — reported, but not counted against anything. */
+  const excludedTotal = useMemo(() => tripTotal(monthTransactions), [monthTransactions]);
 
   const spentByCategory = useMemo(() => {
     const map = new Map<Category, number>();
@@ -124,6 +143,7 @@ export default function BudgetPage() {
     const relevant: Category[] = [];
     const rest: Category[] = [];
     for (const c of CATEGORIES) {
+      if (EXCLUDED_FROM_SPENDING.includes(c)) continue;
       const hasBudget = (byCategory.get(c) ?? 0) > 0;
       const hasSpending = (spentByCategory.get(c) ?? 0) > 0;
       (hasBudget || hasSpending ? relevant : rest).push(c);
@@ -159,7 +179,7 @@ export default function BudgetPage() {
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
-              Spent in {formatMonthKey(month)}
+              Everyday spending · {formatMonthKey(month)}
             </p>
             <p className="tnum mt-1.5 text-[34px] font-semibold leading-none tracking-tight text-text-primary sm:text-[40px]">
               {formatCurrency(summary.total)}
@@ -192,6 +212,13 @@ export default function BudgetPage() {
                 </dd>
               </div>
             </dl>
+
+            {excludedTotal > 0 && (
+              <p className="mt-3 text-xs text-text-tertiary">
+                Excludes {formatCurrency(excludedTotal)} of trip spending, which is tracked
+                apart from everyday spending.
+              </p>
+            )}
 
             <GlassButton
               variant="primary"

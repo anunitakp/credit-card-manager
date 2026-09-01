@@ -37,6 +37,8 @@ data.
      Without it the app starts but every page reports a missing table.
    - [`supabase/migration-02-multi-user.sql`](supabase/migration-02-multi-user.sql)
      — accounts, and per-account ownership of every row. **Required.**
+   - [`supabase/migration-03-salary.sql`](supabase/migration-03-salary.sql)
+     — salary, its monthly split, and bonuses. **Required for the Salary page.**
 3. Open **Project Settings → API** and copy the **Project URL** and the
    **`service_role` secret key** (not the `anon` key).
 
@@ -55,7 +57,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # Signs the session cookie. Any long random string; changing it signs
 # everyone out. Generate one with:
 #   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-AUTH_SECRET=your-long-random-string
+AUTH_SECRET=-21mpc7L81El7FSEQOFbeqBSLoFnG_TAQnpuiQ0kZgxPMDeKUAysV4CcS20gu-0a
 ```
 
 ```bash
@@ -144,6 +146,31 @@ Budgets stay out of the numbers on `/statistics` — everything there is derived
 from expenses alone. Budget progress appears only on `/budget` and on the
 dashboard's headline card.
 
+**Trip spending is excluded from budgets.** A holiday is a one-off that would
+swamp an ordinary month and make the budget useless as a read on everyday
+spending, so anything in the `Trip` category is left out of budget totals, out
+of the budget bar, and off the category list on `/budget`. It is still a real
+expense everywhere else — the dashboard total, the category chart and
+Statistics all count it — and both pages say how much was excluded rather than
+letting the figures quietly disagree.
+
+### Salary
+
+`/salary` records what came in and where it went:
+
+- **One salary figure per month**, entered against the month it arrived in.
+- **A free-text split** of that money — Rent, SIP, Sent home — with the share
+  of salary each line represents and how much is still unassigned. Labels are
+  free text because what you do with a salary does not map onto the expense
+  categories.
+- **Bonuses**, stored separately and shown per year in the quietest card on the
+  page. A once-a-year payment folded into a month's salary would make that
+  month read as a permanent raise, so it never is.
+
+This page fetches its own data instead of joining the app bootstrap: it is the
+only page that needs it, and three extra queries in front of every navigation
+is a poor trade for one screen.
+
 ### Tables
 
 | Table | Holds |
@@ -155,6 +182,9 @@ dashboard's headline card.
 | `budgets` | One standing budget per category, applied to every month; `category is null` is the overall monthly budget. |
 | `trips` | Standalone travel records. Not counted in monthly spending. |
 | `notes` | Free-form notes. |
+| `salary_months` | One salary figure per month per account. |
+| `salary_allocations` | Free-text lines splitting a month's salary. |
+| `bonuses` | Dated one-offs, kept apart from monthly salary. |
 | `all_transactions` | View: `expenses` ∪ `upi_expenses`, the tracker's only read source. |
 
 ---
@@ -169,7 +199,7 @@ dashboard's headline card.
 | `/statistics` | Monthly and Yearly tabs, derived from expenses alone, with drill-down from any month or category into the underlying transactions. |
 | `/trips` | Trip records — date, place, cost, notes. |
 | `/notes` | Notes. |
-| `/salary` | Placeholder; the route and layout exist so income tracking can be added later without restructuring. |
+| `/salary` | Monthly salary, a free-text split of where it went, and bonuses recorded separately by year. |
 | `/cards` | The Credit Card Manager: current cycle, settlement tracking, close-the-month. |
 | `/login`, `/signup` | Sign in and account creation. The only pages reachable signed out. |
 | `/cards/archives` | Closed cycles, read-only. |

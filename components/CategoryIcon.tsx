@@ -1,7 +1,9 @@
 import {
   BookOpen,
   Car,
+  Coffee,
   Droplet,
+  Fuel as FuelIcon,
   Gift,
   HeartPulse,
   Home,
@@ -25,6 +27,8 @@ export const CATEGORY_ICONS: Record<Category, LucideIcon> = {
   Beauty: Sparkles,
   Skincare: Droplet,
   Transport: Car,
+  Fuel: FuelIcon,
+  "Tea & Coffee": Coffee,
   Culture: Landmark,
   "Books & Subscription": BookOpen,
   Therapy: HeartPulse,

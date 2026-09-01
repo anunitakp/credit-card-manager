@@ -1,8 +1,14 @@
 import {
+  BonusInput,
   BudgetInput,
   CATEGORIES,
   Category,
   NoteInput,
+  SalaryAllocationInput,
+  SalaryMonthInput,
+  TRIP_CATEGORIES,
+  TripCategory,
+  TripExpenseLinkInput,
   TripInput,
   UpiExpenseInput,
 } from "./types";
@@ -108,5 +114,90 @@ export function parseNoteInput(body: unknown): NoteInput {
   return {
     title: (title || "Untitled").slice(0, 160),
     content: content.slice(0, 20000),
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Salary                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Months are stored as the first day of the month, e.g. 2026-09-01. */
+function parseMonth(raw: unknown): string {
+  if (!isIsoDate(raw) || !raw.endsWith("-01")) {
+    throw new ValidationError("Month must be the first day of a month (YYYY-MM-01).");
+  }
+  return raw;
+}
+
+export function parseSalaryMonthInput(body: unknown): SalaryMonthInput {
+  const b = asObject(body);
+  const notes = typeof b.notes === "string" ? b.notes.trim() : "";
+
+  return {
+    month: parseMonth(b.month),
+    amount: parseAmount(b.amount, "Salary"),
+    notes: notes === "" ? null : notes.slice(0, 500),
+  };
+}
+
+export function parseAllocationInput(body: unknown): SalaryAllocationInput {
+  const b = asObject(body);
+
+  const label = typeof b.label === "string" ? b.label.trim() : "";
+  if (!label) {
+    throw new ValidationError("Give this a name, e.g. Rent or Savings.");
+  }
+
+  return {
+    month: parseMonth(b.month),
+    label: label.slice(0, 80),
+    amount: parseAmount(b.amount, "Amount"),
+  };
+}
+
+export function parseBonusInput(body: unknown): BonusInput {
+  const b = asObject(body);
+
+  const label = typeof b.label === "string" ? b.label.trim() : "";
+  if (!label) {
+    throw new ValidationError("Give this bonus a name.");
+  }
+  if (!isIsoDate(b.received_on)) {
+    throw new ValidationError("Choose the date the bonus arrived.");
+  }
+
+  const notes = typeof b.notes === "string" ? b.notes.trim() : "";
+
+  return {
+    received_on: b.received_on,
+    label: label.slice(0, 80),
+    amount: parseAmount(b.amount, "Amount"),
+    notes: notes === "" ? null : notes.slice(0, 500),
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Trip expense links                                                  */
+/* ------------------------------------------------------------------ */
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function parseTripLinkInput(body: unknown): TripExpenseLinkInput {
+  const b = asObject(body);
+
+  if (typeof b.trip_id !== "string" || !UUID.test(b.trip_id)) {
+    throw new ValidationError("Pick a trip.");
+  }
+  if (typeof b.transaction_id !== "string" || !UUID.test(b.transaction_id)) {
+    throw new ValidationError("Pick an expense.");
+  }
+  if (!TRIP_CATEGORIES.includes(b.trip_category as TripCategory)) {
+    throw new ValidationError("Pick what this was spent on.");
+  }
+
+  return {
+    trip_id: b.trip_id,
+    transaction_id: b.transaction_id,
+    trip_category: b.trip_category as TripCategory,
   };
 }

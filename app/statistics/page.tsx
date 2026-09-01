@@ -30,6 +30,8 @@ import TransactionRow from "@/components/tracker/TransactionRow";
 import { useTracker } from "@/components/tracker/TrackerProvider";
 import {
   averageDaily,
+  everydayOnly,
+  excludedTotal,
   filterByMonth,
   filterByYear,
   monthlyTotalsForYear,
@@ -37,7 +39,7 @@ import {
   yearsWithData,
 } from "@/lib/analytics";
 import { formatCurrency, formatCurrencyCompact, formatCurrencyWhole } from "@/lib/format";
-import { currentMonthKey, currentYear, formatMonthKey } from "@/lib/month";
+import { currentMonthKey, currentYear, formatMonthKey, shiftMonthKey } from "@/lib/month";
 import { Category } from "@/lib/types";
 
 type Tab = "monthly" | "yearly";
@@ -63,25 +65,43 @@ function StatisticsPageInner() {
     () => filterByMonth(transactions, month),
     [transactions, month]
   );
-  const monthSummary = useMemo(() => summarise(monthTransactions), [monthTransactions]);
+
+  /** Trip spending is held apart everywhere, so the pages cannot disagree. */
+  const everyday = useMemo(() => everydayOnly(transactions), [transactions]);
+  const monthExcluded = useMemo(() => excludedTotal(monthTransactions), [monthTransactions]);
+  const monthSummary = useMemo(
+    () => summarise(everydayOnly(monthTransactions)),
+    [monthTransactions]
+  );
 
   const monthYear = Number(month.slice(0, 4));
+
+  /**
+   * The same month a year-to-date figure cannot give you: how this month
+   * compares with the one before it. Null when there is nothing to compare
+   * against, so the card can say so instead of showing a meaningless 0%.
+   */
+  const previousMonth = shiftMonthKey(month, -1);
+  const previousTotal = useMemo(
+    () => summarise(everydayOnly(filterByMonth(transactions, previousMonth))).total,
+    [transactions, previousMonth]
+  );
+  const monthOverMonth =
+    previousTotal > 0 ? ((monthSummary.total - previousTotal) / previousTotal) * 100 : null;
   const monthSeries = useMemo(
-    () => monthlyTotalsForYear(transactions, monthYear),
-    [transactions, monthYear]
+    () => monthlyTotalsForYear(everyday, monthYear),
+    [everyday, monthYear]
   );
 
   /* ------------------------------------------------------------- Yearly */
 
-  const yearTransactions = useMemo(
-    () => filterByYear(transactions, year),
+  const yearTransactions = useMemo(() => filterByYear(everyday, year), [everyday, year]);
+  const yearExcluded = useMemo(
+    () => excludedTotal(filterByYear(transactions, year)),
     [transactions, year]
   );
   const yearSummary = useMemo(() => summarise(yearTransactions), [yearTransactions]);
-  const yearSeries = useMemo(
-    () => monthlyTotalsForYear(transactions, year),
-    [transactions, year]
-  );
+  const yearSeries = useMemo(() => monthlyTotalsForYear(everyday, year), [everyday, year]);
 
   const yearExtremes = useMemo(() => {
     const active = yearSeries.filter((m) => m.total > 0);
@@ -142,7 +162,11 @@ function StatisticsPageInner() {
             <StatCard
               label="Total spent"
               value={formatCurrency(monthSummary.total)}
-              hint={formatMonthKey(month)}
+              hint={
+                monthExcluded > 0
+                  ? `Excludes ${formatCurrency(monthExcluded)} of trips`
+                  : formatMonthKey(month)
+              }
               icon={Wallet}
               tone="primary"
             />
@@ -199,6 +223,21 @@ function StatisticsPageInner() {
               }
               hint={monthSummary.largest?.description}
               icon={Receipt}
+            />
+            <StatCard
+              label="vs last month"
+              value={
+                monthOverMonth === null
+                  ? "—"
+                  : `${monthOverMonth >= 0 ? "+" : "−"}${Math.abs(monthOverMonth).toFixed(0)}%`
+              }
+              hint={
+                previousTotal > 0
+                  ? `${formatMonthKey(previousMonth)}: ${formatCurrencyWhole(previousTotal)}`
+                  : "Nothing spent that month"
+              }
+              icon={monthOverMonth !== null && monthOverMonth > 0 ? TrendingUp : TrendingDown}
+              tone={monthOverMonth !== null && monthOverMonth > 0 ? "warning" : "primary"}
             />
           </div>
 
@@ -284,6 +323,11 @@ function StatisticsPageInner() {
               {yearSummary.count} transactions across {year}
               {yearExtremes && ` · ${yearExtremes.activeMonths} active months`}
             </p>
+            {yearExcluded > 0 && (
+              <p className="mt-1.5 text-xs text-text-tertiary">
+                Excludes {formatCurrency(yearExcluded)} of trip spending.
+              </p>
+            )}
           </GlassCard>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

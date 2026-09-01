@@ -15,7 +15,14 @@ import TransactionRow from "@/components/tracker/TransactionRow";
 import { useAddExpense } from "@/components/tracker/AddExpenseProvider";
 import { useSession } from "@/components/tracker/SessionProvider";
 import { useTracker } from "@/components/tracker/TrackerProvider";
-import { budgetTone, splitBudgets, filterByMonth, summarise } from "@/lib/analytics";
+import {
+  budgetTone,
+  everydayOnly,
+  excludedTotal as tripTotal,
+  splitBudgets,
+  filterByMonth,
+  summarise,
+} from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
 import { currentMonthKey, formatMonthKey } from "@/lib/month";
 import { Category } from "@/lib/types";
@@ -38,11 +45,15 @@ export default function DashboardPage() {
 
   const monthKey = currentMonthKey();
 
-  const { summary, monthTransactions, monthlyBudget } = useMemo(() => {
+  const { summary, monthTransactions, monthlyBudget, excluded } = useMemo(() => {
     const monthTransactions = filterByMonth(transactions, monthKey);
     return {
       monthTransactions,
-      summary: summarise(monthTransactions),
+      // Every figure on this card — the headline, the donut, the category
+      // shares — is everyday spending only. A holiday is reported on its own
+      // line below rather than folded in.
+      summary: summarise(everydayOnly(monthTransactions)),
+      excluded: tripTotal(monthTransactions),
       monthlyBudget: splitBudgets(budgets).overall,
     };
   }, [transactions, budgets, monthKey]);
@@ -100,7 +111,7 @@ export default function DashboardPage() {
 
         <p className="mt-2.5 text-sm text-text-secondary">
           {summary.count === 0
-            ? "No transactions yet"
+            ? "No everyday spending yet"
             : `${summary.count} ${summary.count === 1 ? "transaction" : "transactions"}`}
           {monthlyBudget > 0 && (
             <>
@@ -144,6 +155,18 @@ export default function DashboardPage() {
             </span>
             <ArrowRight className="h-4 w-4 shrink-0 text-primary" aria-hidden />
           </Link>
+        )}
+        {excluded > 0 && (
+          <p className="mt-4 border-t border-glass pt-3 text-xs text-text-tertiary">
+            Plus{" "}
+            <Link
+              href={`/expenses?month=${monthKey}&category=Trip`}
+              className="font-medium text-primary transition-opacity hover:opacity-75"
+            >
+              {formatCurrency(excluded)} on trips
+            </Link>
+            , kept out of this month&rsquo;s totals and budget.
+          </p>
         )}
       </GlassCard>
 
