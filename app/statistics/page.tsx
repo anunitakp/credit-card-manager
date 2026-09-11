@@ -10,6 +10,7 @@ import {
   Flame,
   Gauge,
   Hash,
+  Home,
   Receipt,
   Smartphone,
   TrendingDown,
@@ -29,7 +30,9 @@ import StatCard from "@/components/tracker/StatCard";
 import TransactionRow from "@/components/tracker/TransactionRow";
 import { useTracker } from "@/components/tracker/TrackerProvider";
 import {
+  MANDATORY_CATEGORIES,
   averageDaily,
+  discretionaryOnly,
   everydayOnly,
   excludedTotal,
   filterByMonth,
@@ -39,7 +42,7 @@ import {
   yearsWithData,
 } from "@/lib/analytics";
 import { formatCurrency, formatCurrencyCompact, formatCurrencyWhole } from "@/lib/format";
-import { currentMonthKey, currentYear, formatMonthKey, shiftMonthKey } from "@/lib/month";
+import { currentMonthKey, currentYear, formatMonthKey } from "@/lib/month";
 import { Category } from "@/lib/types";
 
 type Tab = "monthly" | "yearly";
@@ -74,20 +77,32 @@ function StatisticsPageInner() {
     [monthTransactions]
   );
 
+  /**
+   * The same month with Household taken out. A rent or a utility bill is not
+   * a choice and is nearly always the largest line, so leaving it in makes
+   * "Highest expense" report the same answer every single month.
+   */
+  const monthDiscretionary = useMemo(
+    () => summarise(discretionaryOnly(monthTransactions)),
+    [monthTransactions]
+  );
+
   const monthYear = Number(month.slice(0, 4));
 
   /**
-   * The same month a year-to-date figure cannot give you: how this month
-   * compares with the one before it. Null when there is nothing to compare
-   * against, so the card can say so instead of showing a meaningless 0%.
+   * What the unavoidable half of the month cost.
+   *
+   * Household is held out of every "biggest" card so the variable spending
+   * can be seen, which leaves it unreported everywhere else — this card is
+   * where it is accounted for, rather than being silently dropped.
    */
-  const previousMonth = shiftMonthKey(month, -1);
-  const previousTotal = useMemo(
-    () => summarise(everydayOnly(filterByMonth(transactions, previousMonth))).total,
-    [transactions, previousMonth]
-  );
-  const monthOverMonth =
-    previousTotal > 0 ? ((monthSummary.total - previousTotal) / previousTotal) * 100 : null;
+  const monthHousehold = useMemo(() => {
+    const rows = monthTransactions.filter((t) => MANDATORY_CATEGORIES.includes(t.category));
+    return {
+      total: rows.reduce((sum, t) => sum + t.amount, 0),
+      count: rows.length,
+    };
+  }, [monthTransactions]);
   const monthSeries = useMemo(
     () => monthlyTotalsForYear(everyday, monthYear),
     [everyday, monthYear]
@@ -103,14 +118,29 @@ function StatisticsPageInner() {
   const yearSummary = useMemo(() => summarise(yearTransactions), [yearTransactions]);
   const yearSeries = useMemo(() => monthlyTotalsForYear(everyday, year), [everyday, year]);
 
+  /**
+   * Extremes are measured on discretionary spending only, so the trio agrees
+   * with itself: a highest month that ignored Household compared against a
+   * lowest month that did not would not be comparing the same quantity.
+   */
+  const discretionary = useMemo(() => discretionaryOnly(transactions), [transactions]);
+  const yearDiscretionarySummary = useMemo(
+    () => summarise(filterByYear(discretionary, year)),
+    [discretionary, year]
+  );
+  const discretionarySeries = useMemo(
+    () => monthlyTotalsForYear(discretionary, year),
+    [discretionary, year]
+  );
+
   const yearExtremes = useMemo(() => {
-    const active = yearSeries.filter((m) => m.total > 0);
+    const active = discretionarySeries.filter((m) => m.total > 0);
     if (active.length === 0) return null;
     const highest = active.reduce((a, b) => (b.total > a.total ? b : a));
     const lowest = active.reduce((a, b) => (b.total < a.total ? b : a));
     const average = active.reduce((sum, m) => sum + m.total, 0) / active.length;
     return { highest, lowest, average, activeMonths: active.length };
-  }, [yearSeries]);
+  }, [discretionarySeries]);
 
   function openCategory(category: Category, scope: "month" | "year") {
     const query =
@@ -208,36 +238,35 @@ function StatisticsPageInner() {
             />
             <StatCard
               label="Top category"
-              value={monthSummary.byCategory[0]?.category ?? "—"}
+              value={monthDiscretionary.byCategory[0]?.category ?? "—"}
               hint={
-                monthSummary.byCategory[0]
-                  ? formatCurrency(monthSummary.byCategory[0].amount)
-                  : undefined
+                monthDiscretionary.byCategory[0]
+                  ? `${formatCurrency(monthDiscretionary.byCategory[0].amount)} · excl. Household`
+                  : "Excludes Household"
               }
               icon={Flame}
             />
             <StatCard
               label="Highest expense"
               value={
-                monthSummary.largest ? formatCurrency(monthSummary.largest.amount) : "—"
+                monthDiscretionary.largest
+                  ? formatCurrency(monthDiscretionary.largest.amount)
+                  : "—"
               }
-              hint={monthSummary.largest?.description}
+              hint={monthDiscretionary.largest?.description ?? "Excludes Household"}
               icon={Receipt}
             />
             <StatCard
-              label="vs last month"
-              value={
-                monthOverMonth === null
-                  ? "—"
-                  : `${monthOverMonth >= 0 ? "+" : "−"}${Math.abs(monthOverMonth).toFixed(0)}%`
-              }
+              label="Household"
+              value={formatCurrency(monthHousehold.total)}
               hint={
-                previousTotal > 0
-                  ? `${formatMonthKey(previousMonth)}: ${formatCurrencyWhole(previousTotal)}`
-                  : "Nothing spent that month"
+                monthHousehold.count === 0
+                  ? "Nothing recorded this month"
+                  : monthSummary.total > 0
+                    ? `${Math.round((monthHousehold.total / monthSummary.total) * 100)}% of spending`
+                    : undefined
               }
-              icon={monthOverMonth !== null && monthOverMonth > 0 ? TrendingUp : TrendingDown}
-              tone={monthOverMonth !== null && monthOverMonth > 0 ? "warning" : "primary"}
+              icon={Home}
             />
           </div>
 
@@ -336,7 +365,11 @@ function StatisticsPageInner() {
               value={
                 yearExtremes ? formatMonthKey(yearExtremes.highest.monthKey).split(" ")[0] : "—"
               }
-              hint={yearExtremes ? formatCurrency(yearExtremes.highest.total) : undefined}
+              hint={
+                yearExtremes
+                  ? `${formatCurrency(yearExtremes.highest.total)} · excl. Household`
+                  : undefined
+              }
               icon={TrendingUp}
               tone="warning"
             />
@@ -345,14 +378,18 @@ function StatisticsPageInner() {
               value={
                 yearExtremes ? formatMonthKey(yearExtremes.lowest.monthKey).split(" ")[0] : "—"
               }
-              hint={yearExtremes ? formatCurrency(yearExtremes.lowest.total) : undefined}
+              hint={
+                yearExtremes
+                  ? `${formatCurrency(yearExtremes.lowest.total)} · excl. Household`
+                  : undefined
+              }
               icon={TrendingDown}
               tone="primary"
             />
             <StatCard
               label="Average / month"
               value={yearExtremes ? formatCurrencyWhole(yearExtremes.average) : "—"}
-              hint="Across months with spending"
+              hint="Months with spending, excl. Household"
               icon={Gauge}
             />
             <StatCard
@@ -387,18 +424,24 @@ function StatisticsPageInner() {
             />
             <StatCard
               label="Top category"
-              value={yearSummary.byCategory[0]?.category ?? "—"}
+              value={yearDiscretionarySummary.byCategory[0]?.category ?? "—"}
               hint={
-                yearSummary.byCategory[0]
-                  ? formatCurrency(yearSummary.byCategory[0].amount)
-                  : undefined
+                yearDiscretionarySummary.byCategory[0]
+                  ? `${formatCurrency(yearDiscretionarySummary.byCategory[0].amount)} · excl. Household`
+                  : "Excludes Household"
               }
               icon={Flame}
             />
             <StatCard
               label="Highest expense"
-              value={yearSummary.largest ? formatCurrency(yearSummary.largest.amount) : "—"}
-              hint={yearSummary.largest?.description}
+              value={
+                yearDiscretionarySummary.largest
+                  ? formatCurrency(yearDiscretionarySummary.largest.amount)
+                  : "—"
+              }
+              hint={
+                yearDiscretionarySummary.largest?.description ?? "Excludes Household"
+              }
               icon={Receipt}
             />
           </div>

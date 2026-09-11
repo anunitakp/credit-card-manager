@@ -11,6 +11,19 @@ import EmptyState from "./EmptyState";
 
 type SortKey = "expense_date" | "expense_name" | "category" | "total_amount" | "my_spending";
 type SortDir = "asc" | "desc";
+type SettlementFilter = "all" | "not_settled" | "settled";
+
+/**
+ * Settlement only means something for an expense someone else owes a share
+ * of. An expense that was entirely yours is neither settled nor outstanding,
+ * so it is left out of both filtered views rather than being counted as
+ * "settled" by default.
+ */
+const SETTLEMENT_FILTERS: { key: SettlementFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "not_settled", label: "Not settled" },
+  { key: "settled", label: "Settled" },
+];
 
 interface Props {
   expenses: Expense[];
@@ -118,9 +131,26 @@ function RowActions({
 export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onSettlementChange }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("expense_date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>("all");
+
+  const filtered = useMemo(() => {
+    if (settlementFilter === "all") return expenses;
+    return expenses.filter(
+      (e) => Number(e.others_amount) > 0 && e.settlement_status === settlementFilter
+    );
+  }, [expenses, settlementFilter]);
+
+  /** How many are still owed, so the chip can say so without being clicked. */
+  const outstandingCount = useMemo(
+    () =>
+      expenses.filter(
+        (e) => Number(e.others_amount) > 0 && e.settlement_status === "not_settled"
+      ).length,
+    [expenses]
+  );
 
   const sorted = useMemo(() => {
-    const copy = [...expenses];
+    const copy = [...filtered];
     copy.sort((a, b) => {
       let av: string | number = a[sortKey];
       let bv: string | number = b[sortKey];
@@ -131,11 +161,11 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
       return 0;
     });
     return copy;
-  }, [expenses, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   const totals = useMemo(
     () =>
-      expenses.reduce(
+      filtered.reduce(
         (acc, e) => ({
           total: acc.total + Number(e.total_amount),
           mine: acc.mine + Number(e.my_spending),
@@ -145,7 +175,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
         }),
         { total: 0, mine: 0, outstanding: 0 }
       ),
-    [expenses]
+    [filtered]
   );
 
   function toggleSort(key: SortKey) {
@@ -169,6 +199,32 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
 
   return (
     <div>
+      {/* Settlement filter — on both breakpoints, because "what do I still
+          need to collect" is the question this table is most often opened
+          for, and the desktop headers cannot express it. */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="mr-1 text-text-tertiary">Show:</span>
+        {SETTLEMENT_FILTERS.map((opt) => {
+          const active = settlementFilter === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setSettlementFilter(opt.key)}
+              aria-pressed={active}
+              className={clsx(
+                "rounded-full border px-2.5 py-1 font-medium transition-colors duration-150",
+                active
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-glass text-text-secondary hover:bg-text-primary/[0.05]"
+              )}
+            >
+              {opt.label}
+              {opt.key === "not_settled" && outstandingCount > 0 && ` (${outstandingCount})`}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Mobile-only sort control — the desktop table sorts from its headers. */}
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs md:hidden">
         <span className="mr-1 text-text-tertiary">Sort by:</span>
@@ -192,6 +248,21 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
         })}
       </div>
 
+      {filtered.length === 0 ? (
+        <EmptyState
+          title={
+            settlementFilter === "not_settled"
+              ? "Nothing outstanding"
+              : "Nothing settled yet"
+          }
+          description={
+            settlementFilter === "not_settled"
+              ? "Every shared expense in this cycle has been settled up."
+              : "No shared expense in this cycle has been marked settled."
+          }
+        />
+      ) : (
+      <>
       {/* ---------- Desktop: real table with column headers ---------- */}
       <div className="glass glass-lit hidden overflow-hidden rounded-2xl md:block">
         <div className="overflow-x-auto">
@@ -329,7 +400,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
                 {/* Kept as discrete cells (rather than a colSpan) so the row stays
                     aligned when the Category column is hidden below lg. */}
                 <td className="whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                  {expenses.length} {expenses.length === 1 ? "expense" : "expenses"}
+                  {filtered.length} {filtered.length === 1 ? "expense" : "expenses"}
                 </td>
                 <td className={clsx("px-4 py-2.5", CATEGORY_COL)} />
                 <td className="px-4 py-2.5" />
@@ -405,6 +476,8 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
           );
         })}
       </ul>
+      </>
+      )}
     </div>
   );
 }

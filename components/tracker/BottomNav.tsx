@@ -44,7 +44,12 @@ export default function BottomNav() {
           "bg-primary text-primary-foreground shadow-modal",
           "transition-transform duration-200 active:scale-90"
         )}
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
+        /* Clears the bar rather than resting on it. The nav sits at
+           `inset + 12` and stands 81px tall, putting its top edge at
+           `inset + 93` — at the old 92px this button's bottom edge landed a
+           pixel inside the bar and the two read as one welded shape. 105
+           leaves a 12px gap, matching the bar's own inset. */
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 105px)" }}
       >
         <Plus className="h-6 w-6" aria-hidden />
       </button>

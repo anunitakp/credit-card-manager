@@ -60,7 +60,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   rule never engages — the list just gets clipped by the
                   shell with no way to scroll to the rest. */}
               <main className="min-h-0 min-w-0 flex-1 lg:overflow-y-auto">
-                <div className="mx-auto w-full max-w-[1120px] px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pb-12">
+                {/* The bottom padding clears the floating Add button, not just
+                    the nav bar: the button tops out at `inset + 161`, so at
+                    the old 104px the last row's amount scrolled to a rest
+                    underneath it and could not be read. */}
+                <div className="mx-auto w-full max-w-[1120px] px-4 pb-[calc(env(safe-area-inset-bottom)+173px)] pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pb-12">
                   {children}
                 </div>
               </main>

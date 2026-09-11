@@ -210,3 +210,30 @@ export function averageDaily(total: number, monthKey: string): number {
   const days = elapsedDaysInMonth(monthKey);
   return days > 0 ? round2(total / days) : 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Mandatory spending                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Spending that is not a choice.
+ *
+ * Household bills happen whether or not you are paying attention, and they
+ * are large enough to win "highest month" and "highest expense" every time —
+ * which makes both figures useless for the question they exist to answer:
+ * where is the *discretionary* money going.
+ *
+ * Unlike `EXCLUDED_FROM_SPENDING`, these categories still count towards every
+ * total, budget and category breakdown. They are only held out of the
+ * extremes, where a fixed cost drowns out the signal.
+ */
+export const MANDATORY_CATEGORIES: readonly Category[] = ["Household"];
+
+export function isDiscretionary(t: Transaction): boolean {
+  return isEverydaySpending(t) && !MANDATORY_CATEGORIES.includes(t.category);
+}
+
+/** Everyday spending with the unavoidable categories taken out. */
+export function discretionaryOnly(transactions: Transaction[]): Transaction[] {
+  return transactions.filter(isDiscretionary);
+}

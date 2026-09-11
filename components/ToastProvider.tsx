@@ -23,7 +23,9 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const AUTO_DISMISS_MS = 4000;
+/* Long enough to read, short enough not to linger — these confirm an action
+   the user just took, they are not something to be studied. */
+const AUTO_DISMISS_MS = 2600;
 const LEAVE_ANIMATION_MS = 180;
 
 export function useToast(): ToastContextValue {
@@ -62,7 +64,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-4 sm:right-4 sm:left-auto sm:items-end"
+        /* On mobile this clears the floating Add button rather than covering
+           it. The button spans `inset + 105` to `inset + 161`; at the old
+           92px a toast sat directly on top of it, so after saving an expense
+           you had to wait out the dismiss before you could add another. */
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+173px)] z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-4 sm:right-4 sm:left-auto sm:items-end"
       >
         {items.map((item) => (
           <div
