@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { getCycleById } from "@/lib/cycle-service";
+import { CardError, getCardById } from "@/lib/card-service";
 import { parseExpenseInput, ValidationError } from "@/lib/validation";
 import { toErrorMessage } from "@/lib/errors";
 import { requireUser, unauthorizedResponse } from "@/lib/server-session";
@@ -24,6 +25,17 @@ export async function POST(req: Request) {
     if (!cycle) {
       return NextResponse.json({ error: "Billing cycle not found." }, { status: 404 });
     }
+    // An archived card takes no new spending. Checked here rather than only
+    // in the interface, so an open tab from before the card was archived
+    // cannot write to it.
+    const card = cycle.card_id ? await getCardById(supabase, userId, cycle.card_id) : null;
+    if (card?.archived_at) {
+      return NextResponse.json(
+        { error: `${card.name} is archived. Restore it before adding expenses to it.` },
+        { status: 400 }
+      );
+    }
+
     if (cycle.status !== "open") {
       return NextResponse.json(
         { error: "This billing cycle is closed and archived; it cannot be modified." },
@@ -44,6 +56,9 @@ export async function POST(req: Request) {
   } catch (err) {
     const unauthorized = unauthorizedResponse(err);
     if (unauthorized) return unauthorized;
+    if (err instanceof CardError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }

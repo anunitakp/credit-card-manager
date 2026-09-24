@@ -40,7 +40,7 @@ export default function CategoryChart({ data }: Props) {
     <section className="glass glass-lit rounded-2xl p-4 sm:p-5">
       <h2 className="text-base font-semibold text-text-primary">Spending Overview</h2>
       <p className="mt-0.5 text-sm text-text-secondary">
-        Where your money went this billing cycle
+        Where your money went this month
       </p>
 
       {chartData.length === 0 ? (

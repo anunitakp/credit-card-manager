@@ -8,9 +8,9 @@ import GlassInput, { Field } from "@/components/glass/GlassInput";
 import GlassModal from "@/components/glass/GlassModal";
 import GlassSelect from "@/components/glass/GlassSelect";
 import SegmentedControl from "@/components/glass/SegmentedControl";
-import { fetchCurrentCycle, createExpense } from "@/lib/api-client";
+import { fetchCards, fetchCurrentCycle, createExpense } from "@/lib/api-client";
 import { createUpiExpense, updateUpiExpense } from "@/lib/tracker-client";
-import { CATEGORIES, Category, Account, Transaction } from "@/lib/types";
+import { CATEGORIES, Card, Category, Account, Transaction } from "@/lib/types";
 import { todayIso } from "@/lib/month";
 import { formatCurrency } from "@/lib/format";
 
@@ -19,6 +19,13 @@ interface Props {
   onClose: () => void;
   /** Present when editing an existing UPI transaction. */
   initial?: Transaction | null;
+  /**
+   * Pre-selected category for a *new* expense. Set by the page you opened
+   * the sheet from — on Trips, everything you add is a trip expense, so
+   * picking "Trip" by hand every time is pure friction. Ignored when
+   * editing, which always shows the row's own category.
+   */
+  defaultCategory?: Category | null;
   onSaved: (message: string) => void;
 }
 
@@ -27,15 +34,18 @@ interface FormState {
   amount: string;
   category: Category | "";
   account: Account;
+  /** Which card a credit-card expense goes on. "" = the first one. */
+  cardId: string;
   date: string;
 }
 
-function emptyForm(): FormState {
+function emptyForm(defaultCategory?: Category | null): FormState {
   return {
     description: "",
     amount: "",
-    category: "",
+    category: defaultCategory ?? "",
     account: "UPI",
+    cardId: "",
     date: todayIso(),
   };
 }
@@ -44,11 +54,17 @@ function emptyForm(): FormState {
  * The add/edit expense sheet.
  *
  * Choosing "Credit Card" does not create a second copy of anything — it
- * writes straight into the Credit Card Manager's current billing cycle, the
+ * writes straight into the Credit Card Manager's open month, the
  * same table the card manager itself uses. Either entry point, one row.
  */
-export default function AddExpenseModal({ open, onClose, initial, onSaved }: Props) {
-  const [form, setForm] = useState<FormState>(emptyForm);
+export default function AddExpenseModal({
+  open,
+  onClose,
+  initial,
+  defaultCategory,
+  onSaved,
+}: Props) {
+  const [form, setForm] = useState<FormState>(() => emptyForm(defaultCategory));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,12 +79,28 @@ export default function AddExpenseModal({ open, onClose, initial, onSaved }: Pro
         amount: String(initial.amount),
         category: initial.category,
         account: initial.account,
+        cardId: initial.card_id ?? "",
         date: initial.expense_date,
       });
     } else {
-      setForm(emptyForm());
+      setForm(emptyForm(defaultCategory));
     }
-  }, [open, initial]);
+  }, [open, initial, defaultCategory]);
+
+  /**
+   * Loaded only to decide whether to *offer* a choice. With one card there
+   * is nothing to pick, so the field stays hidden and the sheet is exactly
+   * as short as it was before cards existed.
+   */
+  const [cards, setCards] = useState<Card[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    fetchCards()
+      .then(setCards)
+      .catch(() => {
+        // Fall back to the server's default card rather than blocking a save.
+      });
+  }, [open]);
 
   const amountValue = Number(form.amount);
   const amountPreview =
@@ -109,7 +141,7 @@ export default function AddExpenseModal({ open, onClose, initial, onSaved }: Pro
       } else {
         // Credit-card expenses live in the card manager's current cycle, so
         // that the card statement and the tracker are literally the same rows.
-        const { cycle } = await fetchCurrentCycle();
+        const { cycle } = await fetchCurrentCycle(form.cardId || undefined);
         await createExpense(cycle.id, {
           expense_name: form.description.trim(),
           category: form.category,
@@ -217,13 +249,30 @@ export default function AddExpenseModal({ open, onClose, initial, onSaved }: Pro
           </Field>
         </div>
 
+        {!editing && form.account === "Credit Card" && cards.length > 1 && (
+          <Field label="Card" htmlFor="expense-card">
+            <GlassSelect
+              id="expense-card"
+              value={form.cardId || cards[0].id}
+              icon={<CreditCard />}
+              onChange={(e) => setForm((f) => ({ ...f, cardId: e.target.value }))}
+            >
+              {cards.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </GlassSelect>
+          </Field>
+        )}
+
         <Field
           label="Paid with"
           hint={
             editing
               ? undefined
               : form.account === "Credit Card"
-                ? "Saved into your current credit-card billing cycle."
+                ? "Saved into your credit card's open month."
                 : undefined
           }
         >

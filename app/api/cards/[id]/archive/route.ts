@@ -1,25 +1,24 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-import { getOrCreateCurrentCycle, getCycleWithExpenses } from "@/lib/cycle-service";
+import { CardError, setCardArchived } from "@/lib/card-service";
 import { toErrorMessage } from "@/lib/errors";
 import { requireUser, unauthorizedResponse } from "@/lib/server-session";
-import { CardError, resolveCard } from "@/lib/card-service";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+/**
+ * Archive or restore a card. Deliberately its own endpoint rather than a
+ * field on the edit form: retiring a card is a different decision from
+ * renaming one, and folding it into the same PATCH would make an ordinary
+ * rename capable of retiring a card by omission.
+ */
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const { userId } = await requireUser();
     const supabase = getSupabaseServerClient();
-
-    // `cardId` is optional: without it the account's first card is used, so
-    // an old bookmark or a client that predates multiple cards still works.
-    const cardId = new URL(req.url).searchParams.get("cardId");
-    const card = await resolveCard(supabase, userId, cardId);
-
-    const cycle = await getOrCreateCurrentCycle(supabase, userId, card);
-    const data = await getCycleWithExpenses(supabase, userId, cycle.id, card);
-    return NextResponse.json(data);
+    const body = (await req.json()) as Record<string, unknown>;
+    const archived = body.archived !== false;
+    return NextResponse.json(await setCardArchived(supabase, userId, params.id, archived));
   } catch (err) {
     const unauthorized = unauthorizedResponse(err);
     if (unauthorized) return unauthorized;

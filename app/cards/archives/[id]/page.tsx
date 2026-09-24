@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
 import { CycleWithExpenses } from "@/lib/types";
 import { fetchCycle } from "@/lib/api-client";
-import { formatCycleLabelShort } from "@/lib/billing-cycle";
+import { cycleMonthLabel } from "@/lib/billing-cycle";
 import SummaryCards from "@/components/SummaryCards";
 import CategoryChart from "@/components/CategoryChart";
 import ExpenseTable from "@/components/ExpenseTable";
@@ -48,8 +48,11 @@ export default function ArchiveDetailPage() {
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
-            {formatCycleLabelShort(data.cycle)}
+            {data.card.name}
           </h1>
+          <span className="text-sm font-medium text-text-secondary">
+            {cycleMonthLabel(data.cycle.end_date)}
+          </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-border/50 px-2.5 py-1 text-xs font-medium text-text-tertiary">
             <Lock className="h-3 w-3" aria-hidden />
             Archived · Read-only

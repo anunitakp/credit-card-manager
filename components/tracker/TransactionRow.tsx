@@ -41,6 +41,13 @@ export default function TransactionRow({
   const color = categoryColor(t.category, dark);
   const isUpi = t.account === "UPI";
 
+  /**
+   * Credit-card rows name the card they went on rather than repeating
+   * "Credit Card", which the icon already says. Falls back to the account
+   * for rows recorded before cards existed.
+   */
+  const accountLabel = isUpi ? t.account : (t.card_name ?? t.account);
+
   return (
     <div className="group flex items-center gap-2.5 rounded-2xl px-2 py-3 transition-colors duration-200 hover:bg-text-primary/[0.035] sm:gap-4 sm:px-4">
       <span
@@ -72,7 +79,7 @@ export default function TransactionRow({
       <span className="hidden w-[108px] shrink-0 justify-end sm:flex">
         <span
           className={clsx(
-            "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium",
+            "inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium",
             isUpi ? "bg-text-primary/[0.06] text-text-secondary" : "bg-primary/10 text-primary"
           )}
         >
@@ -81,7 +88,10 @@ export default function TransactionRow({
           ) : (
             <CreditCard className="h-3 w-3" aria-hidden />
           )}
-          {t.account}
+          {/* `block` because `truncate` is inert on an inline element — a
+              long card name has to clip rather than push the amount out of
+              its column. */}
+          <span className="block min-w-0 truncate">{accountLabel}</span>
         </span>
       </span>
 
@@ -94,9 +104,9 @@ export default function TransactionRow({
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:hidden",
           isUpi ? "bg-text-primary/[0.06] text-text-secondary" : "bg-primary/10 text-primary"
         )}
-        title={t.account}
+        title={accountLabel}
       >
-        <span className="sr-only">{t.account}</span>
+        <span className="sr-only">{accountLabel}</span>
         {isUpi ? (
           <Smartphone className="h-3.5 w-3.5" aria-hidden />
         ) : (

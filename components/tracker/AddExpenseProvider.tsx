@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ExpenseForm from "@/components/ExpenseForm";
 import { useToast } from "@/components/ToastProvider";
 import { deleteExpense, updateExpense } from "@/lib/api-client";
 import { deleteUpiExpense } from "@/lib/tracker-client";
-import { Expense, ExpenseInput, Transaction } from "@/lib/types";
+import { Category, Expense, ExpenseInput, Transaction } from "@/lib/types";
 import AddExpenseModal from "./AddExpenseModal";
 import { useTracker } from "./TrackerProvider";
 
@@ -40,6 +41,17 @@ export function useAddExpense(): AddExpenseContextValue {
 export function AddExpenseProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const { refreshTransactions } = useTracker();
+
+  /**
+   * The category a new expense starts on, decided by where you are.
+   *
+   * Read from the pathname rather than passed down from each page, because
+   * the button that opens this sheet lives in the bottom nav — it has no
+   * idea which page is underneath it, and threading a prop through the nav
+   * to reach a modal would be a long wire for one default.
+   */
+  const pathname = usePathname();
+  const defaultCategory: Category | null = pathname.startsWith("/trips") ? "Trip" : null;
 
   const [addOpen, setAddOpen] = useState(false);
   const [editingUpi, setEditingUpi] = useState<Transaction | null>(null);
@@ -130,6 +142,7 @@ export function AddExpenseProvider({ children }: { children: React.ReactNode }) 
       <AddExpenseModal
         open={addOpen}
         initial={editingUpi}
+        defaultCategory={defaultCategory}
         onClose={() => {
           setAddOpen(false);
           setEditingUpi(null);

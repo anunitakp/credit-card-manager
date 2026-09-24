@@ -99,7 +99,7 @@ export default function ExpenseForm({ open, onClose, onSubmit, initial }: Props)
       open={open}
       onClose={onClose}
       title={initial ? "Edit Card Expense" : "Add Card Expense"}
-      subtitle="Recorded against your credit-card billing cycle."
+      subtitle="Recorded against your credit card's open month."
       footer={
         <div className="flex gap-3">
           <GlassButton type="button" variant="glass" block onClick={onClose}>

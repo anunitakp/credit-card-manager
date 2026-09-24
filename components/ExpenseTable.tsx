@@ -192,7 +192,7 @@ export default function ExpenseTable({ expenses, readOnly, onEdit, onDelete, onS
     return (
       <EmptyState
         title="No expenses yet"
-        description="Start tracking your spending for this billing cycle."
+        description="Start tracking your spending on this card."
       />
     );
   }

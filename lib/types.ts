@@ -6,11 +6,11 @@ export const CATEGORIES = [
   "Beauty",
   "Skincare",
   "Transport",
-  "Fuel",
+  "Vehicle & Fuel",
   "Tea & Coffee",
   "Culture",
   "Books & Subscription",
-  "Therapy",
+  "Health & Fitness",
   "Gift",
   "Electronics",
   "Trip",
@@ -30,9 +30,47 @@ export type CycleStatus = "open" | "closed";
 /* Credit Card Manager                                                 */
 /* ------------------------------------------------------------------ */
 
+/**
+ * One credit card. An account can hold several, each from a different bank
+ * with its own bill date, each with its own run of months and archives.
+ */
+export interface Card {
+  id: string;
+  name: string;
+  /** Day of the month the bill falls due, 1-31, clamped to month length. */
+  bill_day: number;
+  /**
+   * Set when the card has been retired. An archived card leaves the switcher
+   * and the add-expense picker; every expense ever put on it stays in the
+   * totals, because those read the transactions view, which does not know
+   * about archiving. Reversible.
+   */
+  archived_at: string | null;
+  created_at: string;
+}
+
+/**
+ * A card plus how much history is on it.
+ *
+ * The count is computed server-side from the card's months, never from the
+ * transactions view: the view's `card_id` is a later addition, and a client
+ * reading it from a database that predates that column silently counts zero
+ * — which would offer to delete a card full of spending.
+ */
+export interface CardSummary extends Card {
+  expense_count: number;
+}
+
+export interface CardInput {
+  name: string;
+  bill_day: number;
+}
+
 export interface BillingCycle {
   id: string;
+  card_id: string;
   start_date: string; // YYYY-MM-DD
+  /** The bill date this month closes on. Never shown; gates closing. */
   end_date: string; // YYYY-MM-DD
   status: CycleStatus;
   created_at: string;
@@ -68,6 +106,7 @@ export interface CycleSummary {
 }
 
 export interface CycleWithExpenses {
+  card: Card;
   cycle: BillingCycle;
   expenses: Expense[];
   summary: CycleSummary;
@@ -75,6 +114,8 @@ export interface CycleWithExpenses {
 
 export interface ArchiveListItem {
   id: string;
+  card_id: string;
+  card_name: string;
   start_date: string;
   end_date: string;
   closed_at: string | null;
@@ -106,6 +147,9 @@ export interface Transaction {
   /** Only used to break ties when two transactions share a date. Never shown. */
   created_at: string;
   cycle_id: string | null;
+  /** Which card a credit-card row was put on. Null for UPI. */
+  card_id: string | null;
+  card_name: string | null;
 }
 
 export interface UpiExpenseInput {
@@ -219,7 +263,7 @@ export interface BonusInput {
 /**
  * How spending inside a trip is broken down. Deliberately separate from the
  * everyday `CATEGORIES`: on a holiday "Stay" and "Souvenirs" matter, and
- * "Household" or "Therapy" do not.
+ * "Household" or "Health & Fitness" do not.
  */
 export const TRIP_CATEGORIES = [
   "Travel",
